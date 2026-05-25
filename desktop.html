@@ -165,12 +165,44 @@
     .debug-panel{display:none;position:fixed;right:16px;bottom:62px;width:min(560px,92vw);max-height:55vh;overflow:auto;z-index:9999;background:#101827;color:#e5e7eb;border-radius:18px;padding:14px;box-shadow:0 18px 45px rgba(17,24,39,.25);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap}
     .debug-panel.show{display:block}
 
+
+    .cart-card-row{display:grid;grid-template-columns:72px minmax(0,1fr);gap:12px;align-items:start;border-bottom:1px solid var(--line);padding:14px 0}
+    .cart-product-img{width:72px;height:72px;border-radius:14px;object-fit:cover;border:1px solid var(--line);background:#f3f4f6}
+    .cart-product-noimg{width:72px;height:72px;border-radius:14px;border:1px solid var(--line);background:#fff1f1;color:var(--red);display:grid;place-items:center;font-size:11px;font-weight:900;text-align:center}
+    .cart-line-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .cart-line-title{font-weight:950;line-height:1.2;word-break:break-word}
+    .cart-controls{display:grid;grid-template-columns:auto 1fr;gap:10px;margin-top:10px;align-items:end}
+    .cart-qty{display:flex;gap:6px;align-items:center}
+    .cart-qty .input{width:64px;text-align:center;padding:7px}
+    .cart-discount-input{width:100%;max-width:140px;padding:7px!important}
+    .cart-line-totals{font-size:13px;color:var(--muted);margin-top:6px}
+    .cart-line-final{font-size:18px;font-weight:950;color:var(--ink);white-space:nowrap}
+    .cart-actions{display:flex;justify-content:flex-end;margin-top:8px}
+    .cart-summary-box{border:1px solid var(--line);border-radius:18px;padding:14px;margin-top:14px;background:#fff}
+    .cart-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .cart-summary-mini{background:#f9fafb;border:1px solid var(--line);border-radius:14px;padding:10px}
+    .cart-summary-mini span{display:block;color:var(--muted);font-weight:850;font-size:12px;margin-bottom:4px}
+    .cart-summary-mini b{font-size:18px}
+    .cart-total-final{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);margin-top:12px;padding-top:12px;font-size:24px;font-weight:950}
+    .cart-total-final b{color:var(--red)}
+    .cart-wide-table{display:block!important}
+    .cart-wide-table thead{display:none}
+    .cart-wide-table tbody{display:block}
+    .cart-wide-table tr{display:block}
+    .cart-wide-table td{display:block;border-bottom:0;padding:0}
+    body{overflow-x:hidden}
+    .card{overflow-x:hidden}
+
+
+    .brand-logo-img{width:54px;height:54px;object-fit:contain;border-radius:16px;background:#fff;box-shadow:0 8px 18px rgba(17,24,39,.08);padding:4px}
+    .top-logo-img{width:50px;height:50px;object-fit:contain;border-radius:14px;background:#fff;box-shadow:0 8px 18px rgba(17,24,39,.08);padding:3px}
+.admin-visible{display:block!important}
 </style>
 </head>
 <body>
   <div id="login" class="login">
     <div class="login-card">
-      <div class="brand"><div class="logo">POS</div><div><h1>POS Mayorista Pro</h1><p>Mayorista Tapatío / Hiper / MT Laser</p></div></div>
+      <div class="brand"><img class="brand-logo-img" src="logo-mayorista.png" alt="Mayorista Tapatío"><div><h1>POS Mayorista Pro</h1><p>Mayorista Tapatío / Hiper / MT Laser</p></div></div>
       <label>Código de acceso</label>
       <input id="panelCode" class="input" type="password" placeholder="Ingresa tu código" autocomplete="one-time-code" />
       <button class="btn" style="width:100%;margin-top:14px" onclick="login()">Entrar</button>
@@ -180,7 +212,7 @@
 
   <div id="app" class="app">
     <div class="top">
-      <div class="top-left"><div class="logo">POS</div><div><h2>POS Mayorista Pro</h2><div class="muted">Panel POS conectado a Shopify</div></div></div>
+      <div class="top-left"><img class="top-logo-img" src="logo-mayorista.png" alt="Mayorista Tapatío"><div><h2>POS Mayorista Pro</h2><div class="muted">Panel POS conectado a Shopify</div></div></div>
       <div class="row"><span class="badge">POS activo</span><span class="pill" id="activeUserBadge">Usuario</span><button class="btn gray" onclick="logout()">Salir</button></div>
     </div>
 
@@ -333,32 +365,7 @@
             <input id="frase" class="admin-hidden" />
             <div id="suggestSku" class="suggestions admin-hidden"></div>
             <div id="suggestFrase" class="suggestions admin-hidden"></div>
-            <div id="products"></div>
-
-
-            
-          
-          <div class="discount-box">
-            <h3>Descuentos</h3>
-            <div class="form-grid">
-              <div>
-                <label>Descuento general en $</label>
-                <input id="descuentoGeneralMonto" class="input" type="number" min="0" step="0.01" value="0" oninput="actualizarResumenDescuento(); if(typeof actualizarResumenPagos==='function') actualizarResumenPagos();" />
-              </div>
-              <div>
-                <label>Motivo del descuento</label>
-                <input id="motivoDescuento" class="input" placeholder="Ej. cliente frecuente, promoción, autorización" oninput="actualizarResumenDescuento()" />
-              </div>
-            </div>
-            <div id="descuentoResumen" class="discount-summary">
-              <div class="discount-mini"><span>Subtotal</span><br><b>$0.00</b></div>
-              <div class="discount-mini"><span>Total final</span><br><b>$0.00</b></div>
-              <div class="discount-mini"><span>Estado</span><br><b>Sin carrito</b></div>
-            </div>
-            
-          </div>
-
-<hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+            <div id="products"></div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
 
           <h3>Cliente <span class="badtext">* obligatorio</span></h3>
           <div class="form-grid">
@@ -588,12 +595,17 @@ let activeUser = null;
 let ventasPOS = [];
 let historialPOSActual = [];
 let lastTicket = '';
-  const dm = document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto'); if(dm) dm.value = 0;
+  const dm = document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto'); if(dm) dm.value = 0;
   const md = document.getElementById('motivoDescuento'); if(md) md.value = '';
 let suggestTimer = null;
 let lastSuggestController = null;
 
-function getSessionUser(){ const raw=localStorage.getItem('pos-user'); if(!raw) return null; try{return JSON.parse(raw)}catch{return null} }
+function refreshActiveUserFromUsers(u){
+  if(!u || !u.code || !USERS[u.code]) return u;
+  return { code: u.code, ...USERS[u.code] };
+}
+
+function getSessionUser(){ const raw=localStorage.getItem('pos-user'); if(!raw) return null; try{return refreshActiveUserFromUsers(JSON.parse(raw))}catch{return null} }
 activeUser = getSessionUser();
 
 if(activeUser){
@@ -673,26 +685,23 @@ function applyUserProfile(){
   const sucursalEl = document.getElementById('sucursal');
   const vendedorEl = document.getElementById('vendedor');
 
-  if(activeUser.fixedShop && shopEl){
-    shopEl.value = activeUser.fixedShop;
-  }
+  if(activeUser.fixedShop && shopEl) shopEl.value = activeUser.fixedShop;
+  if(activeUser.fixedSucursal && sucursalEl) sucursalEl.value = activeUser.fixedSucursal;
+  if(activeUser.fixedVendedor && vendedorEl) vendedorEl.value = activeUser.fixedVendedor;
 
-  if(activeUser.fixedSucursal && sucursalEl){
-    sucursalEl.value = activeUser.fixedSucursal;
-  }
+  const adminTitle = document.querySelector('h3.admin-hidden');
+  const adminGrid = document.querySelector('.form-grid.admin-hidden');
 
-  if(activeUser.fixedVendedor && vendedorEl){
-    vendedorEl.value = activeUser.fixedVendedor;
-  }
-
-  if(!activeUser.canChangeStore){
-    if(shopEl) shopEl.disabled = true;
-    if(sucursalEl) sucursalEl.disabled = true;
-    if(vendedorEl) vendedorEl.disabled = true;
-  } else {
+  if(activeUser.canChangeStore){
+    if(adminTitle) adminTitle.classList.remove('admin-hidden');
+    if(adminGrid) adminGrid.classList.remove('admin-hidden');
     if(shopEl) shopEl.disabled = false;
     if(sucursalEl) sucursalEl.disabled = false;
     if(vendedorEl) vendedorEl.disabled = false;
+  } else {
+    if(shopEl) shopEl.disabled = true;
+    if(sucursalEl) sucursalEl.disabled = true;
+    if(vendedorEl) vendedorEl.disabled = true;
   }
 }
 
@@ -1100,6 +1109,7 @@ function agregarCarrito(p){
 function renderCarrito(){
   const body=document.getElementById('cartBody'), table=document.getElementById('cartTable'), empty=document.getElementById('cartEmpty');
   body.innerHTML='';
+
   if(carrito.length===0){
     table.style.display='none';
     empty.style.display='block';
@@ -1109,7 +1119,8 @@ function renderCarrito(){
     return;
   }
 
-  table.style.display='table';
+  table.style.display='block';
+  table.classList.add('cart-wide-table');
   empty.style.display='none';
 
   carrito.forEach((item,index)=>{
@@ -1120,31 +1131,68 @@ function renderCarrito(){
 
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>
-        <div style="display:flex;align-items:center;gap:12px">
-          ${item.imagen ? `<img src="${item.imagen}" style="width:54px;height:54px;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:#f3f4f6">` : `<div style="width:54px;height:54px;border-radius:12px;border:1px solid var(--line);background:#fff1f1;color:var(--red);display:grid;place-items:center;font-size:10px;font-weight:900">Sin img</div>`}
-          <div>
-            <b>${escapeHtml(item.producto)}</b>
-            <div class="muted">${escapeHtml(item.sku)} ${escapeHtml(item.variante||'')}</div>
-            <div class="muted">Subtotal: ${money(subtotal)}</div>
-            ${descProd>0 ? `<div style="color:var(--red);font-weight:900">Desc: -${money(descProd)}</div>` : ``}
+      <div class="cart-card-row">
+        ${item.imagen ? `<img class="cart-product-img" src="${item.imagen}">` : `<div class="cart-product-noimg">Sin img</div>`}
+        <div>
+          <div class="cart-line-top">
+            <div>
+              <div class="cart-line-title">${escapeHtml(item.producto)}</div>
+              <div class="muted">${escapeHtml(item.sku)} ${escapeHtml(item.variante||'')}</div>
+              <div class="cart-line-totals">Precio: ${money(item.precio)} · Subtotal: ${money(subtotal)}</div>
+              ${descProd>0 ? `<div style="color:var(--red);font-weight:900;margin-top:4px">Desc. producto: -${money(descProd)}</div>` : ``}
+            </div>
+            <div class="cart-line-final">${money(totalLinea)}</div>
+          </div>
+
+          <div class="cart-controls">
+            <div>
+              <label style="margin:0 0 6px;font-size:11px">Cantidad</label>
+              <div class="cart-qty">
+                <button class="btn gray" style="padding:6px 10px" onclick="cambiarCantidad(${index}, -1)">−</button>
+                <input class="input" type="number" min="1" value="${item.cantidad}" onchange="setCantidad(${index}, this.value)">
+                <button class="btn gray" style="padding:6px 10px" onclick="cambiarCantidad(${index}, 1)">+</button>
+              </div>
+            </div>
+
+            <div>
+              <label style="margin:0 0 6px;font-size:11px">Desc. producto $</label>
+              <input class="input cart-discount-input" type="number" min="0" step="0.01" value="${descProd}" onchange="setDescuentoProducto(${index}, this.value)">
+            </div>
+          </div>
+
+          <div class="cart-actions">
+            <button class="btn gray" style="padding:8px 12px" onclick="quitarItem(${index})">Quitar</button>
           </div>
         </div>
-      </td>
-      <td><div class="row" style="gap:6px;flex-wrap:nowrap">
-        <button class="btn gray" style="padding:6px 10px" onclick="cambiarCantidad(${index}, -1)">−</button>
-        <input class="input" type="number" min="1" value="${item.cantidad}" style="width:70px;padding:7px;text-align:center" onchange="setCantidad(${index}, this.value)">
-        <button class="btn gray" style="padding:6px 10px" onclick="cambiarCantidad(${index}, 1)">+</button>
-      </div></td>
-      <td>${money(item.precio)}</td>
-      <td>
-        <input class="input" type="number" min="0" step="0.01" value="${descProd}" style="width:105px;padding:7px" onchange="setDescuentoProducto(${index}, this.value)">
-      </td>
-      <td><b>${money(totalLinea)}</b></td>
-      <td><button class="btn gray" onclick="quitarItem(${index})">Quitar</button></td>`;
+      </div>
+    </td>`;
     body.appendChild(tr)
   });
 
   const d = descuentoInfo();
+
+  const summary=document.createElement('tr');
+  summary.innerHTML=`<td>
+    <div class="cart-summary-box">
+      <h3>Resumen</h3>
+      <div class="cart-summary-grid">
+        <div class="cart-summary-mini"><span>Subtotal original</span><b>${money(d.subtotal)}</b></div>
+        <div class="cart-summary-mini"><span>Desc. productos</span><b>${money(d.descuentoProductos)}</b></div>
+        <div class="cart-summary-mini">
+          <span>Desc. general</span>
+          <input id="descuentoGeneralMontoCart" class="input" type="number" min="0" step="0.01" value="${d.descuento}" oninput="syncDescuentoGeneralDesdeCarrito(this.value)">
+        </div>
+        <div class="cart-summary-mini">
+          <span>Motivo</span>
+          <input id="motivoDescuentoCart" class="input" value="${escapeHtml(d.motivo)}" oninput="syncMotivoDescuentoDesdeCarrito(this.value)" placeholder="Motivo">
+        </div>
+      </div>
+      <div class="cart-total-final"><span>Total final</span><b>${money(d.totalFinal)}</b></div>
+      ${d.bajoCosto && !d.puedeBajoCosto ? `<div class="warning">Descuento bloqueado: el total queda por debajo del mínimo autorizado.</div>` : ``}
+    </div>
+  </td>`;
+  body.appendChild(summary);
+
   document.getElementById('cartTotal').textContent=money(d.totalFinal);
   actualizarResumenDescuento();
   if(typeof actualizarResumenPagos==='function') actualizarResumenPagos();
@@ -1156,6 +1204,17 @@ function setDescuentoProducto(index, value){
   const subtotal = Number(carrito[index].precio || 0) * Number(carrito[index].cantidad || 0);
   carrito[index].descuento_producto = Math.min(Math.max(0, Number(value || 0)), subtotal);
   renderCarrito();
+}
+
+function syncDescuentoGeneralDesdeCarrito(value){
+  const main = document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto');
+  if(main) main.value = Math.max(0, Number(value || 0));
+  renderCarrito();
+}
+
+function syncMotivoDescuentoDesdeCarrito(value){
+  const main = document.getElementById('motivoDescuento');
+  if(main) main.value = value || '';
 }
 function cambiarCantidad(index, delta){
   if(!carrito[index]) return;
@@ -1339,7 +1398,7 @@ function descuentoInfo(){
   const descuentoProductos = redondearLocal(descuentoProductosCarrito());
   const subtotalConProductos = redondearLocal(subtotalDespuesDescuentoProductos());
   const costoMinimo = redondearLocal(costoMinimoCarrito());
-  const descuento = Math.max(0, Number(document.getElementById('descuentoGeneralMonto')?.value || document.getElementById('descuentoMonto')?.value || 0));
+  const descuento = Math.max(0, Number(document.getElementById('descuentoGeneralMonto')?.value || (document.getElementById('descuentoGeneralMonto')||document.getElementById('descuentoMonto'))?.value || 0));
   const totalFinal = redondearLocal(subtotalConProductos - descuento);
   const motivo = (document.getElementById('motivoDescuento')?.value || '').trim();
   const bajoCosto = costoMinimo > 0 && totalFinal < costoMinimo;
@@ -2072,7 +2131,7 @@ function cargarNotaPendienteEnCarrito(nota){
     cantidad: Number(p.cantidad || 0)
   })).filter(p => p.variant_id && p.cantidad > 0);
 
-  const dm = document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto');
+  const dm = document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto');
   if(dm) dm.value = Number(nota.descuento_monto || 0);
 
   const md = document.getElementById('motivoDescuento');
