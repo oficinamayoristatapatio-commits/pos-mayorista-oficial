@@ -611,7 +611,7 @@ activeUser = getSessionUser();
 if(activeUser){
   document.getElementById('login').style.display='none';
   document.getElementById('app').style.display='block';
-  setTimeout(()=>{ventasPOS=cargarVentasPOS();applyUserProfile();syncVisibleFields();syncCancelacionShopWithUser();actualizarPermisosUI();actualizarResumenDescuento();cargarUbicaciones();setDefaultHistorialDate();},0);
+  setTimeout(()=>{ensureDiscountHiddenFields();ventasPOS=cargarVentasPOS();applyUserProfile();syncVisibleFields();syncCancelacionShopWithUser();actualizarPermisosUI();actualizarResumenDescuento();cargarUbicaciones();setDefaultHistorialDate();},0);
 }
 
 function login(){
@@ -1106,6 +1106,23 @@ function agregarCarrito(p){
   const nombreEl = document.getElementById('nombre'); if(nombreEl) nombreEl.value = '';
   const fraseEl = document.getElementById('frase'); if(fraseEl) fraseEl.value = '';
 }
+
+function ensureDiscountHiddenFields(){
+  if(!document.getElementById('motivoDescuento')){
+    const m = document.createElement('input');
+    m.type = 'hidden';
+    m.id = 'motivoDescuento';
+    document.body.appendChild(m);
+  }
+  if(!document.getElementById('descuentoGeneralMonto') && !document.getElementById('descuentoMonto')){
+    const d = document.createElement('input');
+    d.type = 'hidden';
+    d.id = 'descuentoGeneralMonto';
+    d.value = '0';
+    document.body.appendChild(d);
+  }
+}
+
 function renderCarrito(){
   const body=document.getElementById('cartBody'), table=document.getElementById('cartTable'), empty=document.getElementById('cartEmpty');
   body.innerHTML='';
@@ -1213,8 +1230,14 @@ function syncDescuentoGeneralDesdeCarrito(value){
 }
 
 function syncMotivoDescuentoDesdeCarrito(value){
-  const main = document.getElementById('motivoDescuento');
-  if(main) main.value = value || '';
+  let main = document.getElementById('motivoDescuento');
+  if(!main){
+    main = document.createElement('input');
+    main.type = 'hidden';
+    main.id = 'motivoDescuento';
+    document.body.appendChild(main);
+  }
+  main.value = value || '';
 }
 function cambiarCantidad(index, delta){
   if(!carrito[index]) return;
@@ -1400,7 +1423,11 @@ function descuentoInfo(){
   const costoMinimo = redondearLocal(costoMinimoCarrito());
   const descuento = Math.max(0, Number(document.getElementById('descuentoGeneralMonto')?.value || (document.getElementById('descuentoGeneralMonto')||document.getElementById('descuentoMonto'))?.value || 0));
   const totalFinal = redondearLocal(subtotalConProductos - descuento);
-  const motivo = (document.getElementById('motivoDescuento')?.value || '').trim();
+  const motivo = (
+    document.getElementById('motivoDescuentoCart')?.value ||
+    document.getElementById('motivoDescuento')?.value ||
+    ''
+  ).trim();
   const bajoCosto = costoMinimo > 0 && totalFinal < costoMinimo;
   const puedeBajoCosto = Boolean(activeUser?.nombre === 'Osvaldo' || activeUser?.nombre === 'Daniel' || activeUser?.canBelowCost);
   return { subtotal, descuentoProductos, subtotalConProductos, costoMinimo, descuento, totalFinal, motivo, bajoCosto, puedeBajoCosto };
