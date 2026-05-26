@@ -1558,6 +1558,38 @@ async function syncTiendaPorSucursal(){
   actualizarAvisoTiendaSucursal();
 }
 
+
+function mensajeErrorPOS(data){
+  if(!data) return 'Error desconocido.';
+  if(Array.isArray(data.errores) && data.errores.length){
+    const e = data.errores[0];
+    if(e.tipo_error === 'PAGOS_NO_COINCIDEN_CON_TOTAL' || String(e.error||'').toLowerCase().includes('pagos no coincide')){
+      return e.mensaje_usuario || [
+        'No se pudo crear la venta.',
+        '',
+        'Motivo: los pagos no coinciden con el total final.',
+        'Revisa descuento por producto, descuento general o pagos divididos.'
+      ].join('\n');
+    }
+
+    if(e.tipo_error === 'INVENTARIO_NEGATIVO_NO_AUTORIZADO' || String(e.error||'').toLowerCase().includes('inventario insuficiente')){
+      return [
+        'No se pudo crear la venta.',
+        '',
+        'Motivo: inventario negativo no autorizado.',
+        `Producto: ${e.item?.producto || 'Producto'}`,
+        `Disponible: ${e.disponible}`,
+        `Cantidad solicitada: ${e.cantidad_solicitada}`,
+        `Inventario quedaría en: ${e.inventario_esperado}`,
+        '',
+        'Solución: activa la casilla "Permitir venta con inventario negativo" o corrige el stock en Shopify.'
+      ].join('\\n');
+    }
+    return e.mensaje_usuario || e.error || data.error || 'Hay productos con error.';
+  }
+  return data.error || data.message || 'Error al crear venta.';
+}
+
 async function crearOrden(tipoVenta='real'){
   sincronizarMotivoDescuentoActual();
   if(!activeUser?.canSell){alert('Tu usuario no tiene permiso para crear ventas POS.');return}
@@ -1653,6 +1685,8 @@ async function crearOrden(tipoVenta='real'){
     alert(`Orden creada: ${data.orden?.name||'sin número'}\nInventario descontado de ${data.productos?.length || carrito.length} producto(s).`);
     carrito=[];
     renderCarrito();
+  } else {
+    alert(mensajeErrorPOS(data));
   }
 }
 function generarTicket(data,item){

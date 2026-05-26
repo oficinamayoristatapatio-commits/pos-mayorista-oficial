@@ -1,33 +1,6 @@
 <!doctype html>
 <html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>POS Mayorista</title>
-  <script>
-    (function(){
-      const params = new URLSearchParams(window.location.search);
-
-      if(params.get("desktop")==="1"){
-        window.location.replace("./desktop.html" + window.location.search + window.location.hash);
-        return;
-      }
-
-      if(params.get("mobile")==="1"){
-        window.location.replace("./mobile.html" + window.location.search + window.location.hash);
-        return;
-      }
-
-      const w = Math.min(window.innerWidth || 9999, screen.width || 9999);
-      const isSmallScreen = w <= 900;
-      const isTouch = (navigator.maxTouchPoints || 0) > 0;
-      const ua = navigator.userAgent || "";
-      const isMobileUA = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(ua);
-
-      const target = (isMobileUA || (isSmallScreen && isTouch)) ? "./mobile.html" : "./desktop.html";
-      window.location.replace(target + window.location.search + window.location.hash);
-    })();
-  </script>
-</head>
-<body>Cargando POS Mayorista...</body>
-</html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>POS Mayorista</title>
+<script>
+(function(){const p=new URLSearchParams(location.search);if(p.get("desktop")==="1"){location.replace("./desktop.html"+location.search+location.hash);return}if(p.get("mobile")==="1"){location.replace("./mobile.html"+location.search+location.hash);return}const w=Math.min(window.innerWidth||9999,screen.width||9999);const isSmall=w<=900;const isTouch=(navigator.maxTouchPoints||0)>0;const isMobile=/Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent||"");location.replace((isMobile||(isSmall&&isTouch)?"./mobile.html":"./desktop.html")+location.search+location.hash)})();
+</script></head><body>Cargando POS Mayorista...</body></html>
