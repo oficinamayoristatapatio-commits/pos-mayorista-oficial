@@ -605,6 +605,7 @@ const USERS = {
 let carrito = [];
 let guardandoNotaPendiente = false;
 let guardandoVentaPOS = false;
+let saleIntentIdPOS = null;
 let notaPendienteActiva = null;
 let clienteSeleccionado = null;
 let activeUser = null;
@@ -1564,6 +1565,12 @@ function mensajeErrorPOS(data){
   if(!data) return 'Error desconocido.';
   if(Array.isArray(data.errores) && data.errores.length){
     const e = data.errores[0];
+    if(e.tipo_error === 'VENTA_DUPLICADA_BLOQUEADA' || data.tipo_error === 'VENTA_DUPLICADA_BLOQUEADA'){
+      return `Venta duplicada bloqueada${(e.order_name||data.order_name)?' en la orden '+(e.order_name||data.order_name):''}. No se creó otro pedido.`;
+    }
+    if(e.tipo_error === 'VENTA_EN_PROCESO' || data.tipo_error === 'VENTA_EN_PROCESO'){
+      return 'Esta venta ya está en proceso. Espera unos segundos y revisa el historial antes de intentar otra vez.';
+    }
     if(e.tipo_error === 'NOTA_PENDIENTE_YA_COBRADA' || data.tipo_error === 'NOTA_PENDIENTE_YA_COBRADA'){
       return `Esta nota pendiente ya fue cobrada${(e.order_name||data.order_name)?' en la orden '+(e.order_name||data.order_name):''}. No se creó pedido doble.`;
     }
@@ -1592,6 +1599,18 @@ function mensajeErrorPOS(data){
     return e.mensaje_usuario || e.error || data.error || 'Hay productos con error.';
   }
   return data.error || data.message || 'Error al crear venta.';
+}
+
+
+function getOrCreateSaleIntentId(){
+  if(!saleIntentIdPOS){
+    saleIntentIdPOS = (crypto && crypto.randomUUID) ? crypto.randomUUID() : `sale-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+  return saleIntentIdPOS;
+}
+
+function resetSaleIntentId(){
+  saleIntentIdPOS = null;
 }
 
 async function crearOrden(tipoVenta='real'){
@@ -1673,6 +1692,7 @@ async function crearOrden(tipoVenta='real'){
     permitir_descuento_bajo_costo: desc.puedeBajoCosto ? 'true' : 'false',
     tipo_venta: tipoVenta,
     nota_pendiente_folio: notaPendienteActiva?.folio || '',
+    sale_intent_id: getOrCreateSaleIntentId(),
     permitir_negativo:document.getElementById('permitirNegativo')?.checked?'true':'false',
     nota:`${document.getElementById('nota').value || (tipoVenta === 'prueba' ? 'VENTA POS - NO SURTIR' : 'VENTA POS REAL')} | Usuario POS: ${activeUser?.nombre||'sin usuario'}`
   });
@@ -1697,6 +1717,7 @@ async function crearOrden(tipoVenta='real'){
 
     alert(`Orden creada: ${data.orden?.name||'sin número'}\nInventario descontado de ${data.productos?.length || carrito.length} producto(s).`);
     carrito=[];
+    resetSaleIntentId();
     renderCarrito();
   } else {
     alert(mensajeErrorPOS(data));

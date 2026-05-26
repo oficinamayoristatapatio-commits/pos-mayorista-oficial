@@ -216,7 +216,7 @@ const USERS={
   "4105":{nombre:"Daniel Ríos",rol:"Hiper",shop:"qa6c8h-6x.myshopify.com",sucursal:"hiper",vendedor:"daniel-rios"},
   "4106":{nombre:"Juan",rol:"Hiper",shop:"qa6c8h-6x.myshopify.com",sucursal:"hiper",vendedor:"juan"}
 };
-let user=null, cart=[]; let guardandoNotaPendiente=false; let guardandoVentaPOS=false, cliente=null, locations=[], currentLocationId='', suggestTimer=null, notaActiva=null;
+let user=null, cart=[]; let guardandoNotaPendiente=false; let guardandoVentaPOS=false; let saleIntentIdPOS=null, cliente=null, locations=[], currentLocationId='', suggestTimer=null, notaActiva=null;
 
 function money(n){return Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'})}
 function setDebug(o){document.getElementById('debug').textContent=typeof o==='string'?o:JSON.stringify(o,null,2)}
@@ -337,6 +337,12 @@ function mensajeErrorPOS(data){
   if(!data) return 'Error desconocido.';
   if(Array.isArray(data.errores) && data.errores.length){
     const e = data.errores[0];
+    if(e.tipo_error === 'VENTA_DUPLICADA_BLOQUEADA' || data.tipo_error === 'VENTA_DUPLICADA_BLOQUEADA'){
+      return `Venta duplicada bloqueada${(e.order_name||data.order_name)?' en la orden '+(e.order_name||data.order_name):''}. No se creó otro pedido.`;
+    }
+    if(e.tipo_error === 'VENTA_EN_PROCESO' || data.tipo_error === 'VENTA_EN_PROCESO'){
+      return 'Esta venta ya está en proceso. Espera unos segundos y revisa el historial antes de intentar otra vez.';
+    }
     if(e.tipo_error === 'NOTA_PENDIENTE_YA_COBRADA' || data.tipo_error === 'NOTA_PENDIENTE_YA_COBRADA'){
       return `Esta nota pendiente ya fue cobrada${(e.order_name||data.order_name)?' en la orden '+(e.order_name||data.order_name):''}. No se creó pedido doble.`;
     }
@@ -367,17 +373,26 @@ function mensajeErrorPOS(data){
   return data.error || data.message || 'Error al crear venta.';
 }
 
+
+function getOrCreateSaleIntentId(){
+  if(!saleIntentIdPOS){
+    saleIntentIdPOS = (crypto && crypto.randomUUID) ? crypto.randomUUID() : `sale-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+  return saleIntentIdPOS;
+}
+function resetSaleIntentId(){ saleIntentIdPOS=null; }
+
 async function crearVenta(){
   if(guardandoVentaPOS) return;
   guardandoVentaPOS=true;
   if(!cliente?.customer_id){guardandoVentaPOS=false;return alert('Selecciona cliente');}
   if(!cart.length){guardandoVentaPOS=false;return alert('Agrega productos');}
   const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
-  const data=await api('/pos-crear-orden-prueba',{shop:user.shop,items_json,customer_id:cliente.customer_id,customer_nombre:cliente.nombre||'',customer_telefono:cliente.telefono||'',customer_negocio:cliente.negocio||'',vendedor:user.vendedor,sucursal:user.sucursal,metodo_pago:document.getElementById('usarPagoDividido').checked?'mixto':val('metodo'),pagos_json:JSON.stringify(pagos()),permitir_negativo:document.getElementById('permitirNegativo').checked?'true':'false',descuento_monto:val('descuentoMonto')||0,motivo_descuento:val('motivoDescuento')||'Descuento POS',permitir_descuento_bajo_costo:user.canBelowCost?'true':'false',nota:'VENTA POS REAL',nota_pendiente_folio:notaActiva?.folio||''});
+  const data=await api('/pos-crear-orden-prueba',{shop:user.shop,items_json,customer_id:cliente.customer_id,customer_nombre:cliente.nombre||'',customer_telefono:cliente.telefono||'',customer_negocio:cliente.negocio||'',vendedor:user.vendedor,sucursal:user.sucursal,metodo_pago:document.getElementById('usarPagoDividido').checked?'mixto':val('metodo'),pagos_json:JSON.stringify(pagos()),permitir_negativo:document.getElementById('permitirNegativo').checked?'true':'false',descuento_monto:val('descuentoMonto')||0,motivo_descuento:val('motivoDescuento')||'Descuento POS',permitir_descuento_bajo_costo:user.canBelowCost?'true':'false',nota:'VENTA POS REAL',nota_pendiente_folio:notaActiva?.folio||'',sale_intent_id:getOrCreateSaleIntentId()});
   setDebug(data);
   if(data.ok){
     if(notaActiva?.folio) await api('/pos-marcar-nota-pendiente',{shop:user.shop,folio:notaActiva.folio,estado:'COBRADA',order_name:data.orden?.name||''});
-    alert('Venta creada '+(data.orden?.name||'')); clearCart();
+    alert('Venta creada '+(data.orden?.name||'')); resetSaleIntentId(); clearCart();
   } else alert(mensajeErrorPOS(data));
 }
 async function guardarNotaPendiente(){
