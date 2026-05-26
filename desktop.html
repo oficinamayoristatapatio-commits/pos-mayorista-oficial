@@ -604,6 +604,7 @@ const USERS = {
 
 let carrito = [];
 let guardandoNotaPendiente = false;
+let guardandoVentaPOS = false;
 let notaPendienteActiva = null;
 let clienteSeleccionado = null;
 let activeUser = null;
@@ -1563,6 +1564,9 @@ function mensajeErrorPOS(data){
   if(!data) return 'Error desconocido.';
   if(Array.isArray(data.errores) && data.errores.length){
     const e = data.errores[0];
+    if(e.tipo_error === 'NOTA_PENDIENTE_YA_COBRADA' || data.tipo_error === 'NOTA_PENDIENTE_YA_COBRADA'){
+      return `Esta nota pendiente ya fue cobrada${(e.order_name||data.order_name)?' en la orden '+(e.order_name||data.order_name):''}. No se creó pedido doble.`;
+    }
     if(e.tipo_error === 'PAGOS_NO_COINCIDEN_CON_TOTAL' || String(e.error||'').toLowerCase().includes('pagos no coincide')){
       return e.mensaje_usuario || [
         'No se pudo crear la venta.',
@@ -1591,33 +1595,39 @@ function mensajeErrorPOS(data){
 }
 
 async function crearOrden(tipoVenta='real'){
+  if(guardandoVentaPOS) return;
+  guardandoVentaPOS = true;
   sincronizarMotivoDescuentoActual();
-  if(!activeUser?.canSell){alert('Tu usuario no tiene permiso para crear ventas POS.');return}
+  if(!activeUser?.canSell){guardandoVentaPOS=false;alert('Tu usuario no tiene permiso para crear ventas POS.');return}
   if(!clienteSeleccionado || !clienteSeleccionado.customer_id){
     alert('Cliente obligatorio: selecciona un cliente existente o crea uno nuevo antes de hacer la venta.');
     const input = document.getElementById('clienteBuscar');
     if(input) input.focus();
+    guardandoVentaPOS=false;
     return;
   }
-  if(carrito.length===0){alert('Agrega un producto al carrito.');return}
+  if(carrito.length===0){guardandoVentaPOS=false;alert('Agrega un producto al carrito.');return}
   const desc = descuentoInfo();
   // Motivo de descuento ya no es obligatorio.
   if(desc.totalFinal <= 0){
     alert('El total final debe ser mayor a 0.');
+    guardandoVentaPOS=false;
     return;
   }
   if(desc.bajoCosto && !desc.puedeBajoCosto){
     alert(`Descuento no permitido. El total final queda por debajo del mínimo autorizado.\nTotal final: ${money(desc.totalFinal)}`);
+    guardandoVentaPOS=false;
     return;
   }
 
   const tiendaSucursal = validarTiendaSucursal();
   if(!tiendaSucursal.ok){
     alert(tiendaSucursal.mensaje);
+    guardandoVentaPOS=false;
     return;
   }
 
-  if(!confirm(`¿Crear venta POS con ${carrito.length} producto(s) y descontar inventario?`))return;
+  if(!confirm(`¿Crear venta POS con ${carrito.length} producto(s) y descontar inventario?`)){guardandoVentaPOS=false;return;}
 
   const itemsJson = JSON.stringify(carrito.map(item => ({
     variant_id: item.variant_id,
@@ -1636,6 +1646,7 @@ async function crearOrden(tipoVenta='real'){
   if(!pagoInfo.ok){
     alert(`Los pagos no cuadran. Total: ${money(pagoInfo.total)} · Capturado: ${money(pagoInfo.suma)} · Falta/sobra: ${money(pagoInfo.falta)}`);
     actualizarResumenPagos();
+    guardandoVentaPOS=false;
     return;
   }
 
@@ -1661,12 +1672,14 @@ async function crearOrden(tipoVenta='real'){
     motivo_descuento: desc.motivo,
     permitir_descuento_bajo_costo: desc.puedeBajoCosto ? 'true' : 'false',
     tipo_venta: tipoVenta,
+    nota_pendiente_folio: notaPendienteActiva?.folio || '',
     permitir_negativo:document.getElementById('permitirNegativo')?.checked?'true':'false',
     nota:`${document.getElementById('nota').value || (tipoVenta === 'prueba' ? 'VENTA POS - NO SURTIR' : 'VENTA POS REAL')} | Usuario POS: ${activeUser?.nombre||'sin usuario'}`
   });
 
   setResult(data);
   guardandoNotaPendiente = false;
+  guardandoVentaPOS = false;
 
   if(data.ok){
     guardarUltimaVenta(data);
