@@ -1736,8 +1736,6 @@ async function crearOrden(tipoVenta='real'){
     return;
   }
 
-  const descuentoPagoPOS = descuentoAutomaticoPorPagoPOS();
-
   setResult('Creando venta POS y descontando inventario...');
 
   const data=await api('/pos-crear-orden-prueba',{
@@ -1752,13 +1750,7 @@ async function crearOrden(tipoVenta='real'){
     metodo_pago: pagoInfo.pagos.length > 1 ? 'mixto' : (pagoInfo.pagos[0]?.metodo || document.getElementById('metodo').value),
     pagos_json: JSON.stringify(pagoInfo.pagos),
     descuento_monto: Math.max(Number(desc.descuento||0), Number(descuentoPagoCapturado.descuentoGeneral||0)),
-    descuento_automatico_por_pago: descuentoPagoCapturado.descuentoAuto || 0, Number(descuentoPagoPOS.descuentoGeneral||0)),
-    descuento_automatico_por_pago: descuentoPagoPOS.descuentoAutomatico || 0,
-    descuento_productos_monto: desc.descuentoProductos,
-    motivo_descuento: desc.motivo || 'Descuento POS',
-    permitir_descuento_bajo_costo: desc.puedeBajoCosto ? 'true' : 'false',
-    descuento_monto: Math.max(Number(desc.descuento||0), Number(descuentoPagoPOS.descuentoGeneral||0)),
-    descuento_automatico_por_pago: descuentoPagoPOS.descuentoAutomatico || 0,
+    descuento_automatico_por_pago: descuentoPagoCapturado.descuentoAuto || 0,
     descuento_productos_monto: desc.descuentoProductos,
     motivo_descuento: desc.motivo || 'Descuento POS',
     permitir_descuento_bajo_costo: desc.puedeBajoCosto ? 'true' : 'false',
