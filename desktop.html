@@ -302,7 +302,7 @@
               <div>
                 <label>Pagos divididos</label>
                 <label style="display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff;margin:0;font-weight:850">
-                  <input id="usarPagoDividido" onchange="togglePagosDivididos()" type="checkbox" onchange="togglePagosDivididos()" />
+                  <input id="usarPagoDividido" type="checkbox" onchange="togglePagosDivididos()" />
                   Activar pagos divididos
                 </label>
               </div>
@@ -322,35 +322,16 @@
             <div id="pagosDivididosBox" class="card" style="box-shadow:none;margin-top:14px;display:none">
               <h3>Pagos divididos</h3>
               <div class="form-grid">
-                <div><label>Efectivo</label><input id="pagoEfectivo" oninput="actualizarResumenPagos()" class="input" type="number" step="0.01" min="0" value="0" oninput="actualizarResumenPagos()" /></div>
-                <div><label>Transferencia</label><input id="pagoTransferencia" oninput="actualizarResumenPagos()" class="input" type="number" step="0.01" min="0" value="0" oninput="actualizarResumenPagos()" /></div>
-                <div><label>Terminal bancaria</label><input id="pagoTerminal" oninput="actualizarResumenPagos()" class="input" type="number" step="0.01" min="0" value="0" oninput="actualizarResumenPagos()" /></div>
-                <div><label>Depósito</label><input id="pagoDeposito" oninput="actualizarResumenPagos()" class="input" type="number" step="0.01" min="0" value="0" oninput="actualizarResumenPagos()" /></div>
-                <div><label>Mercado Pago</label><input id="pagoMercado" oninput="actualizarResumenPagos()" class="input" type="number" step="0.01" min="0" value="0" oninput="actualizarResumenPagos()" /></div>
+                <div><label>Efectivo</label><input id="pagoEfectivo" class="input" type="number" step="0.01" min="0" value="0" oninput="actualizarResumenPagos()" /></div>
+                <div><label>Transferencia</label><input id="pagoTransferencia" class="input" type="number" step="0.01" min="0" value="0" oninput="actualizarResumenPagos()" /></div>
+                <div><label>Terminal bancaria</label><input id="pagoTerminal" class="input" type="number" step="0.01" min="0" value="0" oninput="actualizarResumenPagos()" /></div>
+                <div><label>Depósito</label><input id="pagoDeposito" class="input" type="number" step="0.01" min="0" value="0" oninput="actualizarResumenPagos()" /></div>
+                <div><label>Mercado Pago</label><input id="pagoMercado" class="input" type="number" step="0.01" min="0" value="0" oninput="actualizarResumenPagos()" /></div>
               </div>
               <div class="warning" id="resumenPagos">Total venta: $0.00 · Pagado: $0.00 · Falta: $0.00</div>
             </div>
 
-            <div class="form-grid">
-            <div>
-              <label>Método de pago</label>
-              <select id="metodoVisible" class="input" onchange="document.getElementById('metodo').value=this.value; if(typeof actualizarResumenPagos==='function') actualizarResumenPagos();">
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="terminal_bancaria">Terminal bancaria</option>
-                <option value="deposito">Depósito</option>
-                <option value="mercado_pago">Mercado Pago</option>
-              </select>
-            </div>
-            <div>
-              <label>Tipo de pago</label>
-              <label style="display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:16px;padding:12px;background:#fff;margin:0;font-weight:850">
-                <input id="pagoDivididoVisible" type="checkbox" onchange="togglePagoDivididoVisible()" />
-                Pago dividido
-              </label>
-            </div>
-          </div>
-
+          
           <div id="tiendaSucursalAviso" class="warning" style="display:none"></div>
           <div id="sellerBanner" class="seller-banner">
             <div>
@@ -359,17 +340,7 @@
             </div>
             <span>Sesión activa</span>
           </div>
-
-          <label style="display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:16px;padding:12px;background:#fff;margin:8px 0 14px;font-weight:850">
-            <input id="inventarioNegativoVisible" type="checkbox" onchange="document.getElementById('permitirNegativo').checked=this.checked" />
-            Permitir venta con inventario negativo
-          </label>
-
-          
-
-
-
-            <h3>Buscar producto</h3><p class="muted">Busca por palabras sueltas: ejemplo “20 oz generico” también puede encontrar “Termo 20 oz Genérico”.</p>
+<h3>Buscar producto</h3><p class="muted">Busca por palabras sueltas: ejemplo “20 oz generico” también puede encontrar “Termo 20 oz Genérico”.</p>
             <div class="simple-search-grid">
               <div class="suggest-wrap">
                 <label>Buscar producto</label>
