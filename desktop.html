@@ -1740,45 +1740,69 @@ function generarTicket(data,item){
     const subtotalLinea = Number(p.subtotal || (Number(p.precio_unitario || 0) * Number(p.cantidad || 0)));
     const descLinea = Number(p.descuento_producto || 0);
     const totalLinea = Number(p.total || (subtotalLinea - descLinea));
-    return `${p.cantidad || 0} x ${p.producto || ''}
-SKU: ${p.sku || ''}
-P.Unit: ${money(p.precio_unitario || 0)}  Subtotal: ${money(subtotalLinea)}${descLinea > 0 ? `
-Desc. producto: -${money(descLinea)}` : ''}
-Total línea: ${money(totalLinea)}`;
-  }).join('
------------------------------
-');
+    return [
+      `${p.cantidad || 0} x ${p.producto || ''}`,
+      `SKU: ${p.sku || ''}`,
+      `P.Unit: ${money(p.precio_unitario || 0)}  Subtotal: ${money(subtotalLinea)}`,
+      descLinea > 0 ? `Desc. producto: -${money(descLinea)}` : '',
+      `Total línea: ${money(totalLinea)}`
+    ].filter(Boolean).join('\n');
+  }).join('\n-----------------------------\n');
 
-  lastTicket=`MAYORISTA TAPATÍO
-Orden: ${orden.name||''}
-Fecha: ${fecha}
-Vendedor: ${v.vendedor||''}
-Sucursal: ${v.sucursal||''}
-Método: ${v.metodo_pago||''}
------------------------------
-${lines}
------------------------------
-SUBTOTAL ORIGINAL: ${money(subtotalOriginal)}
-DESCUENTO PRODUCTOS: -${money(descuentoProductos)}
-DESCUENTO GENERAL: -${money(descuentoGeneral)}
-TOTAL DESCUENTO: -${money(descuentoTotal)}
-TOTAL PAGADO: ${money(totalFinal)}
+  lastTicket = [
+    'MAYORISTA TAPATÍO',
+    `Orden: ${orden.name||''}`,
+    `Fecha: ${fecha}`,
+    `Vendedor: ${v.vendedor||''}`,
+    `Sucursal: ${v.sucursal||''}`,
+    `Método: ${v.metodo_pago||''}`,
+    '-----------------------------',
+    lines,
+    '-----------------------------',
+    `SUBTOTAL ORIGINAL: ${money(subtotalOriginal)}`,
+    `DESCUENTO PRODUCTOS: -${money(descuentoProductos)}`,
+    `DESCUENTO GENERAL: -${money(descuentoGeneral)}`,
+    `TOTAL DESCUENTO: -${money(descuentoTotal)}`,
+    `TOTAL PAGADO: ${money(totalFinal)}`,
+    '',
+    '*** VENTA POS ***',
+    'Gracias por tu compra'
+  ].join('\n');
 
-*** VENTA POS ***
-Gracias por tu compra`;
+  const productosHtml = productos.map(p => {
+    const subtotalLinea = Number(p.subtotal || (Number(p.precio_unitario || 0) * Number(p.cantidad || 0)));
+    const descLinea = Number(p.descuento_producto || 0);
+    const totalLinea = Number(p.total || (subtotalLinea - descLinea));
+    return `
+      <div><b>${escapeHtml(p.producto || '')}</b></div>
+      <div class="trow"><span>${p.cantidad || 0} x ${money(p.precio_unitario || 0)}</span><b>${money(subtotalLinea)}</b></div>
+      ${descLinea>0?`<div class="trow" style="color:#dc2626"><span>Desc. producto</span><b>-${money(descLinea)}</b></div>`:''}
+      <div class="trow"><span>Total línea</span><b>${money(totalLinea)}</b></div>
+      <div class="muted">SKU: ${escapeHtml(p.sku || '')}</div>
+    `;
+  }).join('<div class="line"></div>');
 
-  document.getElementById('ticketBox').innerHTML=`<div class="ticket"><h3>MAYORISTA TAPATÍO</h3><div class="trow"><span>Orden</span><b>${escapeHtml(orden.name||'')}</b></div><div class="trow"><span>Fecha</span><span>${escapeHtml(fecha)}</span></div><div class="line"></div><div>Vendedor: ${escapeHtml(v.vendedor||'')}</div><div>Sucursal: ${escapeHtml(v.sucursal||'')}</div><div>Método: ${escapeHtml(v.metodo_pago||'')}</div>
-        ${v.pagos && v.pagos.length ? `<div class="ticket-small">Pagos:<br>${v.pagos.map(p=>`${escapeHtml(p.metodo)}: ${money(p.monto)}`).join('<br>')}</div>` : ''}<div class="line"></div>${productos.map(p=>{
-          const subtotalLinea = Number(p.subtotal || (Number(p.precio_unitario || 0) * Number(p.cantidad || 0)));
-          const descLinea = Number(p.descuento_producto || 0);
-          const totalLinea = Number(p.total || (subtotalLinea - descLinea));
-          return `<div><b>${escapeHtml(p.producto || '')}</b></div><div class="trow"><span>${p.cantidad || 0} x ${money(p.precio_unitario || 0)}</span><b>${money(subtotalLinea)}</b></div>${descLinea>0?`<div class="trow" style="color:#dc2626"><span>Desc. producto</span><b>-${money(descLinea)}</b></div>`:''}<div class="trow"><span>Total línea</span><b>${money(totalLinea)}</b></div><div class="muted">SKU: ${escapeHtml(p.sku || '')}</div>`;
-        }).join('<div class="line"></div>')}<div class="line"></div>
-        <div class="trow"><span>Subtotal original</span><b>${money(subtotalOriginal)}</b></div>
-        ${descuentoProductos>0?`<div class="trow" style="color:#dc2626"><span>Descuento productos</span><b>-${money(descuentoProductos)}</b></div>`:''}
-        ${descuentoGeneral>0?`<div class="trow" style="color:#dc2626"><span>Descuento general</span><b>-${money(descuentoGeneral)}</b></div>`:''}
-        ${descuentoTotal>0?`<div class="trow"><span>Total descuento</span><b>-${money(descuentoTotal)}</b></div>`:''}
-        <div class="trow"><b>TOTAL PAGADO</b><b>${money(totalFinal)}</b></div><p class="muted">VENTA POS</p></div>`;
+  document.getElementById('ticketBox').innerHTML = `
+    <div class="ticket">
+      <h3>MAYORISTA TAPATÍO</h3>
+      <div class="trow"><span>Orden</span><b>${escapeHtml(orden.name||'')}</b></div>
+      <div class="trow"><span>Fecha</span><span>${escapeHtml(fecha)}</span></div>
+      <div class="line"></div>
+      <div>Vendedor: ${escapeHtml(v.vendedor||'')}</div>
+      <div>Sucursal: ${escapeHtml(v.sucursal||'')}</div>
+      <div>Método: ${escapeHtml(v.metodo_pago||'')}</div>
+      ${v.pagos && v.pagos.length ? `<div class="ticket-small">Pagos:<br>${v.pagos.map(p=>`${escapeHtml(p.metodo)}: ${money(p.monto)}`).join('<br>')}</div>` : ''}
+      <div class="line"></div>
+      ${productosHtml}
+      <div class="line"></div>
+      <div class="trow"><span>Subtotal original</span><b>${money(subtotalOriginal)}</b></div>
+      ${descuentoProductos>0?`<div class="trow" style="color:#dc2626"><span>Descuento productos</span><b>-${money(descuentoProductos)}</b></div>`:''}
+      ${descuentoGeneral>0?`<div class="trow" style="color:#dc2626"><span>Descuento general</span><b>-${money(descuentoGeneral)}</b></div>`:''}
+      ${descuentoTotal>0?`<div class="trow"><span>Total descuento</span><b>-${money(descuentoTotal)}</b></div>`:''}
+      <div class="trow"><b>TOTAL PAGADO</b><b>${money(totalFinal)}</b></div>
+      <p class="muted">VENTA POS</p>
+    </div>
+  `;
 }
 function imprimirTicket(){ if(!lastTicket){alert('No hay ticket para imprimir.');return} const w=window.open('','_blank'); w.document.write(`<pre style="font-family:monospace;font-size:12px">${escapeHtml(lastTicket)}</pre><script>window.print()<\/script>`); w.document.close();}
 function copiarTicket(){ if(!lastTicket){alert('No hay ticket para copiar.');return} navigator.clipboard.writeText(lastTicket); alert('Ticket copiado');}
