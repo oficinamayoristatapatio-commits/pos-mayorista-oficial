@@ -1797,7 +1797,7 @@ function generarTicket(data,item){
       <div class="line"></div>
       <div class="trow"><span>Subtotal original</span><b>${money(subtotalOriginal)}</b></div>
       ${descuentoProductos>0?`<div class="trow" style="color:#dc2626"><span>Descuento productos</span><b>-${money(descuentoProductos)}</b></div>`:''}
-      ${descuentoGeneral>0?`<div class="trow" style="color:#dc2626"><span>Descuento general</span><b>-${money(descuentoGeneral)}</b></div>`:''}
+      ${descuentoGeneral>0?`<div class="trow" style="color:#dc2626"><span>${Number(v.descuento_automatico_por_pago||0)>0?'Descuento automático':'Descuento general'}</span><b>-${money(descuentoGeneral)}</b></div>`:''}
       ${descuentoTotal>0?`<div class="trow"><span>Total descuento</span><b>-${money(descuentoTotal)}</b></div>`:''}
       <div class="trow"><b>TOTAL PAGADO</b><b>${money(totalFinal)}</b></div>
       <p class="muted">VENTA POS</p>
