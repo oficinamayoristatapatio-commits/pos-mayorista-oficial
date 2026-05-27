@@ -71,6 +71,7 @@
 <script>window.POS_UPDATE_VERSION="POS_UPDATE_VERSION_2026_05_25_MOBILE_BUSQUEDA_ACENTO_SIN_MOTIVO";</script>
 <script>window.POS_ESTABLE_VERSION="POS_ESTABLE_V1_2026_05_27";</script>
 <script>window.POS_FRONTEND_VERSION="POS_FRONTEND_DESCUENTO_PAGO_FORZADO_2026_05_27";</script>
+<script>window.POS_FRONTEND_VERSION="POS_TOTAL_REAL_AUTOMATICO_V4_2026_05_27";</script>
 </head>
 <body>
 <div class="mobile-shell">
@@ -329,12 +330,17 @@ async function crearCliente(){
 
 
 
+
+
+
 function subtotalCarritoMobile(){
   return cart.reduce((s,i)=>s+Number(i.precio||0)*Number(i.cantidad||0),0);
 }
 function totalPagosCapturadosMobile(){
-  const ps = pagos();
-  return ps.reduce((s,p)=>s+Number(p.monto||0),0);
+  if(!document.getElementById('usarPagoDividido')?.checked){
+    return 0;
+  }
+  return Number(val('pagoEfectivo')||0)+Number(val('pagoTransferencia')||0)+Number(val('pagoTerminal')||0);
 }
 function descuentoGeneralMobile(){
   const descuentoManual = Number(val('descuentoMonto')||0);

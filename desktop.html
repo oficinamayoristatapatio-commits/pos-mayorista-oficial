@@ -214,6 +214,7 @@
 
 <script>window.POS_ESTABLE_VERSION="POS_ESTABLE_V1_2026_05_27";</script>
 <script>window.POS_FRONTEND_VERSION="POS_FRONTEND_DESCUENTO_PAGO_FORZADO_2026_05_27";</script>
+<script>window.POS_FRONTEND_VERSION="POS_TOTAL_REAL_AUTOMATICO_V4_2026_05_27";</script>
 </head>
 <body>
   <div id="login" class="login">
@@ -1357,7 +1358,11 @@ function obtenerTotalCarrito(){
 
 function obtenerPagosPOS(){
   const usarDividido = document.getElementById('usarPagoDividido')?.checked;
-  const total = Math.round((obtenerTotalCarrito() + Number.EPSILON) * 100) / 100;
+  let total = Math.round((obtenerTotalCarrito() + Number.EPSILON) * 100) / 100;
+  const autoDescInfo = typeof calcularDescuentoPorPagoCapturadoDesktop === 'function' ? calcularDescuentoPorPagoCapturadoDesktop() : {descuentoGeneral:0};
+  if(autoDescInfo.descuentoGeneral > 0){
+    total = Math.round((total - autoDescInfo.descuentoGeneral + Number.EPSILON) * 100) / 100;
+  }
 
   if(!usarDividido){
     const metodo = document.getElementById('metodo')?.value || 'efectivo';
@@ -1651,6 +1656,29 @@ function descuentoAutomaticoPorPagoPOS(){
   return { descuentoGeneral: 0, descuentoAutomatico: 0, totalFinal: subtotalDespuesProductos };
 }
 
+
+function calcularDescuentoPorPagoCapturadoDesktop(){
+  const subtotalDespuesProductos = typeof subtotalDespuesDescuentoProductos === 'function'
+    ? Number(subtotalDespuesDescuentoProductos() || 0)
+    : carrito.reduce((s,i)=>s+Number(i.precio||0)*Number(i.cantidad||0),0);
+
+  const descuentoManual = Number((document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto'))?.value || 0);
+  if(descuentoManual > 0) return { descuentoGeneral: descuentoManual, descuentoAuto: 0 };
+
+  if(!document.getElementById('usarPagoDividido')?.checked) return { descuentoGeneral: 0, descuentoAuto: 0 };
+
+  const totalPagos = [
+    'pagoEfectivo','pagoTransferencia','pagoTerminal','pagoDeposito','pagoMercado'
+  ].reduce((s,id)=>s+Number(document.getElementById(id)?.value||0),0);
+
+  if(totalPagos > 0 && totalPagos < subtotalDespuesProductos){
+    const desc = Math.round((subtotalDespuesProductos - totalPagos + Number.EPSILON)*100)/100;
+    return { descuentoGeneral: desc, descuentoAuto: desc };
+  }
+
+  return { descuentoGeneral: 0, descuentoAuto: 0 };
+}
+
 async function crearOrden(tipoVenta='real'){
   if(guardandoVentaPOS) return;
   guardandoVentaPOS = true;
@@ -1698,6 +1726,7 @@ async function crearOrden(tipoVenta='real'){
     producto: item.producto
   })));
 
+  const descuentoPagoCapturado = calcularDescuentoPorPagoCapturadoDesktop();
   const pagoInfo = obtenerPagosPOS();
 
   if(!pagoInfo.ok){
@@ -1722,7 +1751,8 @@ async function crearOrden(tipoVenta='real'){
     sucursal:document.getElementById('sucursal').value,
     metodo_pago: pagoInfo.pagos.length > 1 ? 'mixto' : (pagoInfo.pagos[0]?.metodo || document.getElementById('metodo').value),
     pagos_json: JSON.stringify(pagoInfo.pagos),
-    descuento_monto: Math.max(Number(desc.descuento||0), Number(descuentoPagoPOS.descuentoGeneral||0)),
+    descuento_monto: Math.max(Number(desc.descuento||0), Number(descuentoPagoCapturado.descuentoGeneral||0)),
+    descuento_automatico_por_pago: descuentoPagoCapturado.descuentoAuto || 0, Number(descuentoPagoPOS.descuentoGeneral||0)),
     descuento_automatico_por_pago: descuentoPagoPOS.descuentoAutomatico || 0,
     descuento_productos_monto: desc.descuentoProductos,
     motivo_descuento: desc.motivo || 'Descuento POS',
