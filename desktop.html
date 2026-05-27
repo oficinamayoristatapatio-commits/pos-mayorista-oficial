@@ -213,6 +213,7 @@
 </script>
 
 <script>window.POS_ESTABLE_VERSION="POS_ESTABLE_V1_2026_05_27";</script>
+<script>window.POS_FRONTEND_VERSION="POS_FRONTEND_DESCUENTO_PAGO_FORZADO_2026_05_27";</script>
 </head>
 <body>
   <div id="login" class="login">
@@ -1614,6 +1615,42 @@ function resetSaleIntentId(){
   saleIntentIdPOS = null;
 }
 
+
+function descuentoAutomaticoPorPagoPOS(){
+  const subtotalDespuesProductos = typeof subtotalDespuesDescuentoProductos === 'function'
+    ? Number(subtotalDespuesDescuentoProductos() || 0)
+    : carrito.reduce((s,i)=>s+Number(i.precio||0)*Number(i.cantidad||0),0);
+
+  const descuentoManual = Number((document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto'))?.value || 0);
+
+  // Si ya pusieron descuento manual, respetarlo.
+  if(descuentoManual > 0) return {
+    descuentoGeneral: Math.round((descuentoManual + Number.EPSILON)*100)/100,
+    descuentoAutomatico: 0,
+    totalFinal: Math.round((subtotalDespuesProductos - descuentoManual + Number.EPSILON)*100)/100
+  };
+
+  let totalPagos = 0;
+  const usarDividido = document.getElementById('usarPagoDividido')?.checked;
+
+  if(usarDividido){
+    totalPagos = [
+      'pagoEfectivo',
+      'pagoTransferencia',
+      'pagoTerminal',
+      'pagoDeposito',
+      'pagoMercado'
+    ].reduce((s,id)=>s+Number(document.getElementById(id)?.value||0),0);
+  }
+
+  if(totalPagos > 0 && totalPagos < subtotalDespuesProductos){
+    const desc = Math.round((subtotalDespuesProductos - totalPagos + Number.EPSILON)*100)/100;
+    return { descuentoGeneral: desc, descuentoAutomatico: desc, totalFinal: totalPagos };
+  }
+
+  return { descuentoGeneral: 0, descuentoAutomatico: 0, totalFinal: subtotalDespuesProductos };
+}
+
 async function crearOrden(tipoVenta='real'){
   if(guardandoVentaPOS) return;
   guardandoVentaPOS = true;
@@ -1670,6 +1707,8 @@ async function crearOrden(tipoVenta='real'){
     return;
   }
 
+  const descuentoPagoPOS = descuentoAutomaticoPorPagoPOS();
+
   setResult('Creando venta POS y descontando inventario...');
 
   const data=await api('/pos-crear-orden-prueba',{
@@ -1683,13 +1722,15 @@ async function crearOrden(tipoVenta='real'){
     sucursal:document.getElementById('sucursal').value,
     metodo_pago: pagoInfo.pagos.length > 1 ? 'mixto' : (pagoInfo.pagos[0]?.metodo || document.getElementById('metodo').value),
     pagos_json: JSON.stringify(pagoInfo.pagos),
-    descuento_monto: desc.descuento,
+    descuento_monto: Math.max(Number(desc.descuento||0), Number(descuentoPagoPOS.descuentoGeneral||0)),
+    descuento_automatico_por_pago: descuentoPagoPOS.descuentoAutomatico || 0,
     descuento_productos_monto: desc.descuentoProductos,
-    motivo_descuento: desc.motivo,
+    motivo_descuento: desc.motivo || 'Descuento POS',
     permitir_descuento_bajo_costo: desc.puedeBajoCosto ? 'true' : 'false',
-    descuento_monto: desc.descuento,
+    descuento_monto: Math.max(Number(desc.descuento||0), Number(descuentoPagoPOS.descuentoGeneral||0)),
+    descuento_automatico_por_pago: descuentoPagoPOS.descuentoAutomatico || 0,
     descuento_productos_monto: desc.descuentoProductos,
-    motivo_descuento: desc.motivo,
+    motivo_descuento: desc.motivo || 'Descuento POS',
     permitir_descuento_bajo_costo: desc.puedeBajoCosto ? 'true' : 'false',
     tipo_venta: tipoVenta,
     nota_pendiente_folio: notaPendienteActiva?.folio || '',
