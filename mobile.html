@@ -70,8 +70,8 @@
   </style>
 <script>window.POS_UPDATE_VERSION="POS_UPDATE_VERSION_2026_05_25_MOBILE_BUSQUEDA_ACENTO_SIN_MOTIVO";</script>
 <script>window.POS_ESTABLE_VERSION="POS_ESTABLE_V1_2026_05_27";</script>
-<script>window.POS_FRONTEND_VERSION='POS_TOTAL_REAL_AUTOMATICO_V4_API_CORRECTA_2026_05_27';</script>
-<script>window.POS_FRONTEND_VERSION='POS_TOTAL_REAL_AUTOMATICO_V4_API_CORRECTA_2026_05_27';</script>
+<script>window.POS_FRONTEND_VERSION='POS_FRONTEND_NEGATIVOS_PERMITIDOS_TEMP_2026_05_27';</script>
+<script>window.POS_FRONTEND_VERSION='POS_FRONTEND_NEGATIVOS_PERMITIDOS_TEMP_2026_05_27';</script>
 </head>
 <body>
 <div class="mobile-shell">
@@ -122,7 +122,7 @@
         <h3>Carrito</h3>
         <div id="sellerBox" class="muted" style="margin-top:4px"></div>
         <label style="display:flex;gap:8px;align-items:center;margin-top:12px">
-          <input id="permitirNegativo" type="checkbox"> Permitir venta con inventario negativo
+          <input id="permitirNegativo" type="checkbox" checked> Permitir venta con inventario negativo
         </label>
         <div id="cart"></div>
         <div class="totals">
@@ -419,7 +419,7 @@ async function crearVenta(){
   if(!cliente?.customer_id){guardandoVentaPOS=false;return alert('Selecciona cliente');}
   if(!cart.length){guardandoVentaPOS=false;return alert('Agrega productos');}
   const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
-  const data=await api('/pos-crear-orden-prueba',{shop:user.shop,items_json,customer_id:cliente.customer_id,customer_nombre:cliente.nombre||'',customer_telefono:cliente.telefono||'',customer_negocio:cliente.negocio||'',vendedor:user.vendedor,sucursal:user.sucursal,metodo_pago:document.getElementById('usarPagoDividido').checked?'mixto':val('metodo'),pagos_json:JSON.stringify(pagos()),permitir_negativo:document.getElementById('permitirNegativo').checked?'true':'false',descuento_monto:descuentoGeneralMobile(),descuento_automatico_por_pago:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',permitir_descuento_bajo_costo:user.canBelowCost?'true':'false',nota:'VENTA POS REAL',nota_pendiente_folio:notaActiva?.folio||'',sale_intent_id:getOrCreateSaleIntentId()});
+  const data=await api('/pos-crear-orden-prueba',{shop:user.shop,items_json,customer_id:cliente.customer_id,customer_nombre:cliente.nombre||'',customer_telefono:cliente.telefono||'',customer_negocio:cliente.negocio||'',vendedor:user.vendedor,sucursal:user.sucursal,metodo_pago:document.getElementById('usarPagoDividido').checked?'mixto':val('metodo'),pagos_json:JSON.stringify(pagos()),permitir_negativo:'true',descuento_monto:descuentoGeneralMobile(),descuento_automatico_por_pago:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',permitir_descuento_bajo_costo:user.canBelowCost?'true':'false',nota:'VENTA POS REAL',nota_pendiente_folio:notaActiva?.folio||'',sale_intent_id:getOrCreateSaleIntentId()});
   setDebug(data);
   if(data.ok){
     if(notaActiva?.folio) await api('/pos-marcar-nota-pendiente',{shop:user.shop,folio:notaActiva.folio,estado:'COBRADA',order_name:data.orden?.name||''});
