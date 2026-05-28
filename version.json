@@ -1,5 +1,4 @@
 {
-  "version": "POS-AUTO-UPDATE-2026-05-28-01",
-  "updated_at": "2026-05-28T00:00:00-06:00",
-  "description": "Auto update POS Mayorista. Cambia este valor en cada deployment para recargar cajas automáticamente."
+  "version": "POS-NEGATIVO-AL-CARRITO-TEMP-2026-05-28-01",
+  "description": "Permite agregar productos con inventario negativo sin bloquear en desktop y mobile."
 }

@@ -218,7 +218,7 @@
 
 <script>
 (function(){
-  const CURRENT_POS_VERSION = "POS-AUTO-UPDATE-2026-05-28-01";
+  const CURRENT_POS_VERSION = "POS-NEGATIVO-AL-CARRITO-TEMP-2026-05-28-01";
   window.POS_BUILD_VERSION = CURRENT_POS_VERSION;
 
   function getCartCountSafe(){
@@ -388,7 +388,7 @@
               <div>
                 <label>Inventario</label>
                 <label style="display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff;margin:0;font-weight:850">
-                  <input id="permitirNegativo" type="checkbox" />
+                  <input id="permitirNegativo" type="checkbox" checked />
                   Permitir venta aunque quede inventario negativo
                 </label>
               </div>
@@ -1158,9 +1158,11 @@ function agregarCarrito(p){
   const available=stockLoc?Number(stockLoc.available||0):0;
   if(!p.inventory_item_id){alert('Este producto no trae inventory_item_id.');return}
   if(!selectedLocation){alert('Selecciona ubicación.');return}
-  const permitirNegativo=document.getElementById('permitirNegativo')?.checked;
-  if(available<cantidad && !permitirNegativo){alert(`Inventario insuficiente. Disponible: ${available}. Activa inventario negativo si deseas vender.`);return}
-  if(available<cantidad && permitirNegativo) alert(`Advertencia: quedará inventario negativo. Disponible: ${available}, esperado: ${available-cantidad}.`);
+  // Inventario negativo permitido temporalmente: no bloquear al agregar al carrito.
+  const permitirNegativo = true;
+  if(available<cantidad){
+    console.warn(`Inventario negativo permitido. Disponible: ${available}, esperado: ${available-cantidad}.`);
+  }
   const existente=carrito.find(i=>i.variant_id===p.variant_id && i.location_id===selectedLocation);
   if(existente) existente.cantidad+=cantidad; else carrito.push({producto:p.producto,variante:p.variante,sku:p.sku,imagen:p.imagen||'',variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:selectedLocation,precio:Number(p.precio||0),costo:Number(p.costo||0),cantidad});
   renderCarrito();
@@ -1803,7 +1805,7 @@ async function crearOrden(tipoVenta='real'){
     tipo_venta: tipoVenta,
     nota_pendiente_folio: notaPendienteActiva?.folio || '',
     sale_intent_id: getOrCreateSaleIntentId(),
-    permitir_negativo:document.getElementById('permitirNegativo')?.checked?'true':'false',
+    permitir_negativo:'true',
     nota:`${document.getElementById('nota').value || (tipoVenta === 'prueba' ? 'VENTA POS - NO SURTIR' : 'VENTA POS REAL')} | Usuario POS: ${activeUser?.nombre||'sin usuario'}`
   });
 
