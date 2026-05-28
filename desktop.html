@@ -218,7 +218,7 @@
 
 <script>
 (function(){
-  const CURRENT_POS_VERSION = "POS-NEGATIVO-AL-CARRITO-TEMP-2026-05-28-01";
+  const CURRENT_POS_VERSION = "POS-DATOS-VENTA-VISIBLES-2026-05-28-01";
   window.POS_BUILD_VERSION = CURRENT_POS_VERSION;
 
   function getCartCountSafe(){
@@ -320,8 +320,8 @@
       <div id="tabVentas" class="tabpage active">
         <div class="grid">
           <section class="card">
-            <h3 class="admin-hidden">Datos de venta</h3>
-            <div class="form-grid admin-hidden">
+            <h3>Datos de venta</h3>
+            <div class="form-grid">
               <div>
                 <label>Tienda</label>
                 <select id="shop" class="input" onchange="onShopChange()">
@@ -388,7 +388,7 @@
               <div>
                 <label>Inventario</label>
                 <label style="display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff;margin:0;font-weight:850">
-                  <input id="permitirNegativo" type="checkbox" checked />
+                  <input id="permitirNegativo" type="checkbox" checked checked />
                   Permitir venta aunque quede inventario negativo
                 </label>
               </div>

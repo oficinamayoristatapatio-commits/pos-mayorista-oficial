@@ -1,4 +1,4 @@
 {
-  "version": "POS-NEGATIVO-AL-CARRITO-TEMP-2026-05-28-01",
-  "description": "Permite agregar productos con inventario negativo sin bloquear en desktop y mobile."
+  "version": "POS-DATOS-VENTA-VISIBLES-2026-05-28-01",
+  "description": "Muestra Datos de venta, método de pago, pagos divididos e inventario; mantiene negativos permitidos temporalmente."
 }
