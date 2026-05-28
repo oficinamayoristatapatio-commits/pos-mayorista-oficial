@@ -70,8 +70,83 @@
   </style>
 <script>window.POS_UPDATE_VERSION="POS_UPDATE_VERSION_2026_05_25_MOBILE_BUSQUEDA_ACENTO_SIN_MOTIVO";</script>
 <script>window.POS_ESTABLE_VERSION="POS_ESTABLE_V1_2026_05_27";</script>
-<script>window.POS_FRONTEND_VERSION='POS_FRONTEND_NEGATIVOS_PERMITIDOS_TEMP_2026_05_27';</script>
-<script>window.POS_FRONTEND_VERSION='POS_FRONTEND_NEGATIVOS_PERMITIDOS_TEMP_2026_05_27';</script>
+<script>window.POS_FRONTEND_VERSION='POS_TOTAL_REAL_AUTOMATICO_V4_API_CORRECTA_2026_05_27';</script>
+<script>window.POS_FRONTEND_VERSION='POS_TOTAL_REAL_AUTOMATICO_V4_API_CORRECTA_2026_05_27';</script>
+
+<script>
+(function(){
+  const CURRENT_POS_VERSION = "POS-AUTO-UPDATE-2026-05-28-01";
+  window.POS_BUILD_VERSION = CURRENT_POS_VERSION;
+
+  function getCartCountSafe(){
+    try {
+      if (Array.isArray(window.carrito)) return window.carrito.length;
+      if (Array.isArray(window.cart)) return window.cart.length;
+    } catch(e) {}
+    return 0;
+  }
+
+  function showUpdateBanner(){
+    if (document.getElementById('posUpdateBanner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'posUpdateBanner';
+    banner.style.cssText = [
+      'position:fixed',
+      'left:12px',
+      'right:12px',
+      'bottom:12px',
+      'z-index:999999',
+      'background:#111827',
+      'color:white',
+      'border-radius:16px',
+      'padding:14px 16px',
+      'box-shadow:0 12px 35px rgba(0,0,0,.25)',
+      'font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif',
+      'font-size:14px'
+    ].join(';');
+    banner.innerHTML = '<b>Nueva versión del POS disponible</b><br><span>Termina la venta actual y presiona actualizar.</span><br><button id="posUpdateNowBtn" style="margin-top:10px;border:0;border-radius:12px;padding:10px 14px;font-weight:800;background:#ef3129;color:#fff;cursor:pointer">Actualizar POS</button>';
+    document.body.appendChild(banner);
+    document.getElementById('posUpdateNowBtn').onclick = function(){
+      location.reload(true);
+    };
+  }
+
+  async function checkPOSVersion(){
+    try {
+      const res = await fetch('./version.json?v=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const remoteVersion = String(data.version || '').trim();
+      if (!remoteVersion || remoteVersion === CURRENT_POS_VERSION) return;
+
+      if (getCartCountSafe() === 0) {
+        const msg = document.createElement('div');
+        msg.style.cssText = 'position:fixed;inset:auto 12px 12px 12px;z-index:999999;background:#16a34a;color:white;border-radius:16px;padding:14px 16px;font-weight:800;box-shadow:0 12px 35px rgba(0,0,0,.25)';
+        msg.textContent = 'Actualizando POS a nueva versión...';
+        document.body.appendChild(msg);
+        setTimeout(function(){ location.reload(true); }, 900);
+      } else {
+        showUpdateBanner();
+      }
+    } catch(e) {
+      // No bloquea la operación si version.json no responde.
+    }
+  }
+
+  window.checkPOSVersionNow = checkPOSVersion;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){
+      setTimeout(checkPOSVersion, 5000);
+      setInterval(checkPOSVersion, 60000);
+    });
+  } else {
+    setTimeout(checkPOSVersion, 5000);
+    setInterval(checkPOSVersion, 60000);
+  }
+})();
+</script>
+
 </head>
 <body>
 <div class="mobile-shell">
@@ -122,7 +197,7 @@
         <h3>Carrito</h3>
         <div id="sellerBox" class="muted" style="margin-top:4px"></div>
         <label style="display:flex;gap:8px;align-items:center;margin-top:12px">
-          <input id="permitirNegativo" type="checkbox" checked> Permitir venta con inventario negativo
+          <input id="permitirNegativo" type="checkbox"> Permitir venta con inventario negativo
         </label>
         <div id="cart"></div>
         <div class="totals">
@@ -419,7 +494,7 @@ async function crearVenta(){
   if(!cliente?.customer_id){guardandoVentaPOS=false;return alert('Selecciona cliente');}
   if(!cart.length){guardandoVentaPOS=false;return alert('Agrega productos');}
   const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
-  const data=await api('/pos-crear-orden-prueba',{shop:user.shop,items_json,customer_id:cliente.customer_id,customer_nombre:cliente.nombre||'',customer_telefono:cliente.telefono||'',customer_negocio:cliente.negocio||'',vendedor:user.vendedor,sucursal:user.sucursal,metodo_pago:document.getElementById('usarPagoDividido').checked?'mixto':val('metodo'),pagos_json:JSON.stringify(pagos()),permitir_negativo:'true',descuento_monto:descuentoGeneralMobile(),descuento_automatico_por_pago:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',permitir_descuento_bajo_costo:user.canBelowCost?'true':'false',nota:'VENTA POS REAL',nota_pendiente_folio:notaActiva?.folio||'',sale_intent_id:getOrCreateSaleIntentId()});
+  const data=await api('/pos-crear-orden-prueba',{shop:user.shop,items_json,customer_id:cliente.customer_id,customer_nombre:cliente.nombre||'',customer_telefono:cliente.telefono||'',customer_negocio:cliente.negocio||'',vendedor:user.vendedor,sucursal:user.sucursal,metodo_pago:document.getElementById('usarPagoDividido').checked?'mixto':val('metodo'),pagos_json:JSON.stringify(pagos()),permitir_negativo:document.getElementById('permitirNegativo').checked?'true':'false',descuento_monto:descuentoGeneralMobile(),descuento_automatico_por_pago:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',permitir_descuento_bajo_costo:user.canBelowCost?'true':'false',nota:'VENTA POS REAL',nota_pendiente_folio:notaActiva?.folio||'',sale_intent_id:getOrCreateSaleIntentId()});
   setDebug(data);
   if(data.ok){
     if(notaActiva?.folio) await api('/pos-marcar-nota-pendiente',{shop:user.shop,folio:notaActiva.folio,estado:'COBRADA',order_name:data.orden?.name||''});
