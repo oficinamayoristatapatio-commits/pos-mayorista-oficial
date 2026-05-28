@@ -1,4 +1,4 @@
 {
-  "version": "POS-DATOS-VENTA-VISIBLES-2026-05-28-01",
-  "description": "Muestra Datos de venta, método de pago, pagos divididos e inventario; mantiene negativos permitidos temporalmente."
+  "version": "POS-ESTABLE-SIN-AUTO-RECARGA-2026-05-28-01",
+  "description": "Versión estable sin recarga automática. Solo muestra aviso de actualización."
 }

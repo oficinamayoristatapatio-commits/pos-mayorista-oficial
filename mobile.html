@@ -73,76 +73,49 @@
 <script>window.POS_FRONTEND_VERSION='POS_TOTAL_REAL_AUTOMATICO_V4_API_CORRECTA_2026_05_27';</script>
 <script>window.POS_FRONTEND_VERSION='POS_TOTAL_REAL_AUTOMATICO_V4_API_CORRECTA_2026_05_27';</script>
 
+
 <script>
 (function(){
-  const CURRENT_POS_VERSION = "POS-NEGATIVO-AL-CARRITO-TEMP-2026-05-28-01";
+  const CURRENT_POS_VERSION = "POS-ESTABLE-SIN-AUTO-RECARGA-2026-05-28-01";
   window.POS_BUILD_VERSION = CURRENT_POS_VERSION;
-
-  function getCartCountSafe(){
-    try {
-      if (Array.isArray(window.carrito)) return window.carrito.length;
-      if (Array.isArray(window.cart)) return window.cart.length;
-    } catch(e) {}
-    return 0;
-  }
 
   function showUpdateBanner(){
     if (document.getElementById('posUpdateBanner')) return;
     const banner = document.createElement('div');
     banner.id = 'posUpdateBanner';
     banner.style.cssText = [
-      'position:fixed',
-      'left:12px',
-      'right:12px',
-      'bottom:12px',
-      'z-index:999999',
-      'background:#111827',
-      'color:white',
-      'border-radius:16px',
-      'padding:14px 16px',
+      'position:fixed','left:12px','right:12px','bottom:12px','z-index:999999',
+      'background:#111827','color:white','border-radius:16px','padding:14px 16px',
       'box-shadow:0 12px 35px rgba(0,0,0,.25)',
-      'font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif',
-      'font-size:14px'
+      'font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif','font-size:14px'
     ].join(';');
-    banner.innerHTML = '<b>Nueva versión del POS disponible</b><br><span>Termina la venta actual y presiona actualizar.</span><br><button id="posUpdateNowBtn" style="margin-top:10px;border:0;border-radius:12px;padding:10px 14px;font-weight:800;background:#ef3129;color:#fff;cursor:pointer">Actualizar POS</button>';
+    banner.innerHTML = '<b>Nueva versión disponible</b><br><span>Termina la venta y presiona actualizar cuando el carrito esté vacío.</span><br><button id="posUpdateNowBtn" style="margin-top:10px;border:0;border-radius:12px;padding:10px 14px;font-weight:800;background:#ef3129;color:#fff;cursor:pointer">Actualizar POS</button>';
     document.body.appendChild(banner);
-    document.getElementById('posUpdateNowBtn').onclick = function(){
-      location.reload(true);
-    };
+    document.getElementById('posUpdateNowBtn').onclick = function(){ location.reload(true); };
   }
 
   async function checkPOSVersion(){
     try {
-      const res = await fetch('./version.json?v=' + Date.now(), { cache: 'no-store' });
+      const res = await fetch('./version.json?v=' + Date.now(), { cache:'no-store' });
       if (!res.ok) return;
       const data = await res.json();
       const remoteVersion = String(data.version || '').trim();
       if (!remoteVersion || remoteVersion === CURRENT_POS_VERSION) return;
-
-      if (getCartCountSafe() === 0) {
-        const msg = document.createElement('div');
-        msg.style.cssText = 'position:fixed;inset:auto 12px 12px 12px;z-index:999999;background:#16a34a;color:white;border-radius:16px;padding:14px 16px;font-weight:800;box-shadow:0 12px 35px rgba(0,0,0,.25)';
-        msg.textContent = 'Actualizando POS a nueva versión...';
-        document.body.appendChild(msg);
-        setTimeout(function(){ location.reload(true); }, 900);
-      } else {
-        showUpdateBanner();
-      }
-    } catch(e) {
-      // No bloquea la operación si version.json no responde.
-    }
+      // IMPORTANTE: ya NO recarga automáticamente. Solo avisa.
+      showUpdateBanner();
+    } catch(e) {}
   }
 
   window.checkPOSVersionNow = checkPOSVersion;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function(){
-      setTimeout(checkPOSVersion, 5000);
-      setInterval(checkPOSVersion, 60000);
+      setTimeout(checkPOSVersion, 15000);
+      setInterval(checkPOSVersion, 300000);
     });
   } else {
-    setTimeout(checkPOSVersion, 5000);
-    setInterval(checkPOSVersion, 60000);
+    setTimeout(checkPOSVersion, 15000);
+    setInterval(checkPOSVersion, 300000);
   }
 })();
 </script>
