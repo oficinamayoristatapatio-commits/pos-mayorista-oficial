@@ -1141,7 +1141,7 @@ function agregarCarrito(p){
     console.warn(`Inventario negativo permitido. Disponible: ${available}, esperado: ${available-cantidad}.`);
   }
   const existente=carrito.find(i=>i.variant_id===p.variant_id && i.location_id===selectedLocation);
-  if(existente) existente.cantidad+=cantidad; else carrito.push({producto:p.producto,variante:p.variante,sku:p.sku,imagen:p.imagen||'',variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:selectedLocation,precio:Number(p.precio||0),costo:Number(p.costo||0),cantidad});
+  if(existente) existente.cantidad+=cantidad; else carrito.push({producto:p.producto,variante:p.variante,sku:p.sku,imagen:p.imagen||'',variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:selectedLocation,precio:Number(p.precio||0),precio_sistema:Number(p.precio||0),costo:Number(p.costo||0),cantidad});
   renderCarrito();
   const productsBox = document.getElementById('products');
   if(productsBox) productsBox.innerHTML = '';
@@ -1200,7 +1200,8 @@ function renderCarrito(){
             <div>
               <div class="cart-line-title">${escapeHtml(item.producto)}</div>
               <div class="muted">${escapeHtml(item.sku)} ${escapeHtml(item.variante||'')}</div>
-              <div class="cart-line-totals">Precio: ${money(item.precio)} · Subtotal: ${money(subtotal)}</div>
+              <div class="cart-line-totals">Precio sistema: ${money(item.precio_sistema || item.precio)} · Precio a cobrar: ${money(item.precio)} · Subtotal: ${money(subtotal)}</div>
+              ${Number(item.precio || 0) > Number(item.precio_sistema || item.precio || 0) ? `<div style="color:#166534;font-weight:900;margin-top:4px">Precio arriba del sistema: +${money(Number(item.precio)-Number(item.precio_sistema||0))} por pieza</div>` : ``}
               ${descProd>0 ? `<div style="color:var(--red);font-weight:900;margin-top:4px">Desc. producto: -${money(descProd)}</div>` : ``}
             </div>
             <div class="cart-line-final">${money(totalLinea)}</div>
@@ -1214,6 +1215,11 @@ function renderCarrito(){
                 <input class="input" type="number" min="1" value="${item.cantidad}" onchange="setCantidad(${index}, this.value)">
                 <button class="btn gray" style="padding:6px 10px" onclick="cambiarCantidad(${index}, 1)">+</button>
               </div>
+            </div>
+
+            <div>
+              <label style="margin:0 0 6px;font-size:11px">Precio a cobrar $</label>
+              <input class="input cart-discount-input" type="number" min="0.01" step="0.01" value="${Number(item.precio || 0)}" onchange="setPrecioItem(${index}, this.value)">
             </div>
 
             <div>
@@ -1259,6 +1265,14 @@ function renderCarrito(){
   actualizarResumenDescuento();
   if(typeof actualizarResumenPagos==='function') actualizarResumenPagos();
   syncPagoSimple();
+}
+
+
+function setPrecioItem(index, value){
+  if(!carrito[index]) return;
+  const precio = Math.max(0.01, Number(value || 0));
+  carrito[index].precio = Math.round((precio + Number.EPSILON) * 100) / 100;
+  renderCarrito();
 }
 
 function setDescuentoProducto(index, value){
@@ -1745,6 +1759,7 @@ async function crearOrden(tipoVenta='real'){
     location_id: item.location_id,
     cantidad: item.cantidad,
     precio: item.precio,
+    precio_sistema: item.precio_sistema || item.precio,
     costo: item.costo || 0,
     descuento_producto: item.descuento_producto || 0,
     sku: item.sku,
@@ -2298,6 +2313,7 @@ async function guardarNotaPendiente(){
     location_name: item.location_name || '',
     cantidad: item.cantidad,
     precio: item.precio,
+    precio_sistema: item.precio_sistema || item.precio,
     costo: item.costo || 0,
     descuento_producto: item.descuento_producto || 0,
     sku: item.sku,
@@ -2478,6 +2494,7 @@ function cargarNotaPendienteEnCarrito(nota){
     location_id: p.location_id || document.getElementById('location')?.value || '',
     location_name: p.location_name || '',
     precio: Number(p.precio || 0),
+    precio_sistema: Number(p.precio_sistema || p.precio || 0),
     costo: Number(p.costo || 0),
     descuento_producto: Number(p.descuento_producto || 0),
     cantidad: Number(p.cantidad || 0)

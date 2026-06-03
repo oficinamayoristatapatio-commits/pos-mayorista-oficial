@@ -337,7 +337,7 @@ function renderProductos(products){
 function addCart(p){
   if(!currentLocationId)return alert('No hay ubicación cargada');
   const ex=cart.find(i=>i.variant_id===p.variant_id);
-  if(ex)ex.cantidad++;else cart.push({producto:p.producto,sku:p.sku,imagen:p.imagen||'',variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:currentLocationId,precio:Number(p.precio||0),costo:Number(p.costo||0),cantidad:1});
+  if(ex)ex.cantidad++;else cart.push({producto:p.producto,sku:p.sku,imagen:p.imagen||'',variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:currentLocationId,precio:Number(p.precio||0),precio_sistema:Number(p.precio||0),costo:Number(p.costo||0),cantidad:1});
   document.getElementById('products').innerHTML='';
   document.getElementById('busqueda').value='';
   renderCart();
@@ -349,7 +349,7 @@ function renderCart(){
   if(!cart.length){box.innerHTML='<p class="muted">No hay productos en el carrito.</p>'}
   else box.innerHTML=cart.map((i,idx)=>`<div class="cart-item">
     ${i.imagen?`<img class="cart-img" src="${i.imagen}">`:`<div class="cart-img"></div>`}
-    <div><b>${esc(i.producto)}</b><div class="muted">${esc(i.sku)}</div><div class="qty"><button onclick="qty(${idx},-1)">−</button><input value="${i.cantidad}" onchange="setQty(${idx},this.value)"><button onclick="qty(${idx},1)">+</button><span style="margin-left:auto"><b>${money(i.precio*i.cantidad)}</b></span></div><button class="btn gray" style="margin-top:8px;padding:8px 10px" onclick="removeItem(${idx})">Quitar</button></div>
+    <div><b>${esc(i.producto)}</b><div class="muted">${esc(i.sku)}</div><div class="muted">Sistema: ${money(i.precio_sistema || i.precio)}</div><label style="font-size:12px;font-weight:900">Precio a cobrar</label><input class="input" type="number" min="0.01" step="0.01" value="${Number(i.precio||0)}" onchange="setPrice(${idx},this.value)" style="margin:6px 0"><div class="qty"><button onclick="qty(${idx},-1)">−</button><input value="${i.cantidad}" onchange="setQty(${idx},this.value)"><button onclick="qty(${idx},1)">+</button><span style="margin-left:auto"><b>${money(i.precio*i.cantidad)}</b></span></div>${Number(i.precio||0)>Number(i.precio_sistema||i.precio||0)?`<div style="color:#166534;font-weight:900;margin-top:4px">+${money(Number(i.precio)-Number(i.precio_sistema||0))} por pieza</div>`:''}<button class="btn gray" style="margin-top:8px;padding:8px 10px" onclick="removeItem(${idx})">Quitar</button></div>
   </div>`).join('');
   const subtotal=cart.reduce((s,i)=>s+i.precio*i.cantidad,0);
   const desc=Number(document.getElementById('descuentoMonto')?.value||0);
@@ -357,6 +357,7 @@ function renderCart(){
   document.getElementById('discountView').textContent=money(desc);
   document.getElementById('totalView').textContent=money(subtotal-desc);
 }
+function setPrice(i,v){cart[i].precio=Math.max(0.01,Number(v||0));renderCart()}
 function qty(i,d){cart[i].cantidad=Math.max(1,Number(cart[i].cantidad)+d);renderCart()}
 function setQty(i,v){cart[i].cantidad=Math.max(1,Number(v||1));renderCart()}
 function removeItem(i){cart.splice(i,1);renderCart()}
@@ -466,7 +467,7 @@ async function crearVenta(){
   guardandoVentaPOS=true;
   if(!cliente?.customer_id){guardandoVentaPOS=false;return alert('Selecciona cliente');}
   if(!cart.length){guardandoVentaPOS=false;return alert('Agrega productos');}
-  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
+  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
   const data=await api('/pos-crear-orden-prueba',{shop:user.shop,items_json,customer_id:cliente.customer_id,customer_nombre:cliente.nombre||'',customer_telefono:cliente.telefono||'',customer_negocio:cliente.negocio||'',vendedor:user.vendedor,sucursal:user.sucursal,metodo_pago:document.getElementById('usarPagoDividido').checked?'mixto':val('metodo'),pagos_json:JSON.stringify(pagos()),permitir_negativo:'true',descuento_monto:descuentoGeneralMobile(),descuento_automatico_por_pago:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',permitir_descuento_bajo_costo:user.canBelowCost?'true':'false',nota:'VENTA POS REAL',nota_pendiente_folio:notaActiva?.folio||'',sale_intent_id:getOrCreateSaleIntentId()});
   setDebug(data);
   if(data.ok){
@@ -478,7 +479,7 @@ async function guardarNotaPendiente(){
   if(guardandoNotaPendiente) return;
   if(!cliente?.customer_id)return alert('Selecciona cliente');
   if(!cart.length)return alert('Agrega productos');
-  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
+  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
   const cliente_json=JSON.stringify(cliente);
   guardandoNotaPendiente = true;
   const data=await api('/pos-guardar-nota-pendiente',{shop:user.shop,folio:notaActiva?.folio||'',items_json,cliente_json,vendedor:user.vendedor,sucursal:user.sucursal,usuario:user.nombre,descuento_monto:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',metodo_pago:val('metodo'),nota:'NOTA PENDIENTE POS'});
@@ -494,7 +495,7 @@ async function verNotas(){
 }
 async function abrirNota(f){const data=await api('/pos-ver-nota-pendiente',{shop:user.shop,folio:f});setDebug(data);if(data.ok)cargarNota(data.nota,false)}
 async function cobrarNota(f){const data=await api('/pos-ver-nota-pendiente',{shop:user.shop,folio:f});setDebug(data);if(data.ok)cargarNota(data.nota,true)}
-function cargarNota(n,cobrar){notaActiva=n;cliente=n.cliente;selectCliente(cliente);cart=(n.productos||[]).map(p=>({producto:p.producto,sku:p.sku,imagen:p.imagen,variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:p.location_id,precio:p.precio,costo:p.costo,cantidad:p.cantidad}));document.getElementById('descuentoMonto').value=n.descuento_monto||0;document.getElementById('motivoDescuento').value=n.motivo_descuento||'';renderCart();showScreen('Carrito',document.querySelectorAll('.nav')[1]);if(cobrar)alert('Nota cargada. Presiona Crear venta para cobrar.')}
+function cargarNota(n,cobrar){notaActiva=n;cliente=n.cliente;selectCliente(cliente);cart=(n.productos||[]).map(p=>({producto:p.producto,sku:p.sku,imagen:p.imagen,variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:p.location_id,precio:p.precio,precio_sistema:p.precio_sistema||p.precio,costo:p.costo,cantidad:p.cantidad}));document.getElementById('descuentoMonto').value=n.descuento_monto||0;document.getElementById('motivoDescuento').value=n.motivo_descuento||'';renderCart();showScreen('Carrito',document.querySelectorAll('.nav')[1]);if(cobrar)alert('Nota cargada. Presiona Crear venta para cobrar.')}
 let autoTimer=null;
 function autoSuggest(){clearTimeout(autoTimer);autoTimer=setTimeout(buscarProducto,450)}
 function val(id){return document.getElementById(id)?.value||''}
