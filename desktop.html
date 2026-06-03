@@ -213,13 +213,13 @@
 </script>
 
 <script>window.POS_ESTABLE_VERSION="POS_ESTABLE_V1_2026_05_27";</script>
-<script>window.POS_FRONTEND_VERSION='precio-manual-arriba-sistema-v2';</script>
-<script>window.POS_FRONTEND_VERSION='precio-manual-arriba-sistema-v2';</script>
+<script>window.POS_FRONTEND_VERSION='precio-unitario-manual-v3';</script>
+<script>window.POS_FRONTEND_VERSION='precio-unitario-manual-v3';</script>
 
 
 <script>
 (function(){
-  const CURRENT_POS_VERSION = "precio-manual-arriba-sistema-v2";
+  const CURRENT_POS_VERSION = "precio-unitario-manual-v3";
   window.POS_BUILD_VERSION = CURRENT_POS_VERSION;
 
   function showUpdateBanner(){
@@ -1200,7 +1200,7 @@ function renderCarrito(){
             <div>
               <div class="cart-line-title">${escapeHtml(item.producto)}</div>
               <div class="muted">${escapeHtml(item.sku)} ${escapeHtml(item.variante||'')}</div>
-              <div class="cart-line-totals">Precio sistema: ${money(item.precio_sistema || item.precio)} · Precio a cobrar: ${money(item.precio)} · Subtotal: ${money(subtotal)}</div>
+              <div class="cart-line-totals">Precio unitario sistema: ${money(item.precio_sistema || item.precio)} · Precio unitario a cobrar: ${money(item.precio)} · Subtotal: ${money(subtotal)}</div>
               ${Number(item.precio || 0) > Number(item.precio_sistema || item.precio || 0) ? `<div style="color:#166534;font-weight:900;margin-top:4px">Precio arriba del sistema: +${money(Number(item.precio)-Number(item.precio_sistema||0))} por pieza</div>` : ``}
               ${descProd>0 ? `<div style="color:var(--red);font-weight:900;margin-top:4px">Desc. producto: -${money(descProd)}</div>` : ``}
             </div>
@@ -1218,7 +1218,7 @@ function renderCarrito(){
             </div>
 
             <div>
-              <label style="margin:0 0 6px;font-size:11px">Precio a cobrar $</label>
+              <label style="margin:0 0 6px;font-size:11px">Precio unitario a cobrar $</label>
               <input class="input cart-discount-input" type="number" min="0.01" step="0.01" value="${Number(item.precio || 0)}" onchange="setPrecioItem(${index}, this.value)">
             </div>
 
