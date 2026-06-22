@@ -783,24 +783,35 @@ async function cargarUbicacionesCancelacion(){
 
   selCancel.innerHTML = '<option value="">Cargando ubicaciones...</option>';
 
-  const data = await api('/pos-listar-ubicaciones', { shop: currentCancelShop() });
+  try {
+    const data = await api('/pos-listar-ubicaciones', { shop: currentCancelShop() });
 
-  if(!data.ok || !data.ubicaciones){
-    selCancel.innerHTML = '<option value="">No se pudieron cargar ubicaciones</option>';
-    setResult(data);
-    return;
+    if(!data.ok || !data.ubicaciones){
+      selCancel.innerHTML = '<option value="">No se pudieron cargar ubicaciones</option>';
+      setResult(data);
+      return;
+    }
+
+    selCancel.innerHTML = '';
+
+    data.ubicaciones.filter(u => u.activa).forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.location_id;
+      opt.textContent = u.nombre;
+      selCancel.appendChild(opt);
+    });
+
+    if(!selCancel.value && selCancel.options.length) selCancel.selectedIndex = 0;
+
+    setResult({ok:true, shop:currentCancelShop(), ubicaciones_cancelacion:data.ubicaciones.length});
+  } catch (error) {
+    selCancel.innerHTML = '<option value="">Error cargando ubicaciones</option>';
+    setResult({
+      ok:false,
+      error:'No se pudieron cargar ubicaciones. Revisa CORS/API del Worker.',
+      message:error && error.message ? error.message : String(error)
+    });
   }
-
-  selCancel.innerHTML = '';
-
-  data.ubicaciones.filter(u => u.activa).forEach(u => {
-    const opt = document.createElement('option');
-    opt.value = u.location_id;
-    opt.textContent = u.nombre;
-    selCancel.appendChild(opt);
-  });
-
-  setResult({ok:true, shop:currentCancelShop(), ubicaciones_cancelacion:data.ubicaciones.length});
 }
 
 function syncCancelacionShopWithUser(){
