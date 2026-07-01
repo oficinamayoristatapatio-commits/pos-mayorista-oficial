@@ -73,13 +73,13 @@
   </style>
 <script>window.POS_UPDATE_VERSION="POS_UPDATE_VERSION_2026_05_25_MOBILE_BUSQUEDA_ACENTO_SIN_MOTIVO";</script>
 <script>window.POS_ESTABLE_VERSION="POS_ESTABLE_V1_2026_05_27";</script>
-<script>window.POS_FRONTEND_VERSION='mt-flash-offers-pos-v1';</script>
-<script>window.POS_FRONTEND_VERSION='mt-flash-offers-pos-v1';</script>
+<script>window.POS_FRONTEND_VERSION='pos-descuento-general-40-v1';</script>
+<script>window.POS_FRONTEND_VERSION='pos-descuento-general-40-v1';</script>
 
 
 <script>
 (function(){
-  const CURRENT_POS_VERSION = "mt-flash-offers-pos-v1";
+  const CURRENT_POS_VERSION = "pos-descuento-general-40-v1";
   window.POS_BUILD_VERSION = CURRENT_POS_VERSION;
 
   function showUpdateBanner(){
@@ -181,10 +181,14 @@
           <div class="trow"><span>Descuento</span><b id="discountView">$0.00</b></div>
           <div class="trow"><span>Total</span><b class="total" id="totalView">$0.00</b></div>
         </div>
-        <label>Descuento $</label>
-        <input id="descuentoMonto" class="input" type="number" min="0" value="0" oninput="renderCart()">
+        <label>Descuento general</label>
+        <select id="descuentoPorcentaje" class="input" onchange="renderCart()">
+          <option value="0">Sin descuento</option>
+          <option value="40">40% al carrito</option>
+        </select>
+        <input id="descuentoMonto" type="hidden" value="0">
         <label>Motivo descuento</label>
-        <input id="motivoDescuento" class="input" placeholder="Motivo del descuento">
+        <input id="motivoDescuento" class="input" placeholder="Opcional">
         <label>Método de pago</label>
         <select id="metodo" class="input">
           <option value="efectivo">Efectivo</option>
@@ -335,7 +339,7 @@ async function buscarProducto(){
   const q=document.getElementById('busqueda').value.trim();
   if(!q)return;
   const isSku=/^[A-Za-z0-9\-_]{3,}$/.test(q)&&!q.includes(' ');
-  const data=await api('/pos-buscar-producto',{shop:user.shop,sucursal:user.sucursal||'', [isSku?'sku':'nombre']:q});
+  const data=await api('/pos-buscar-producto',{shop:user.shop,[isSku?'sku':'nombre']:q});
   setDebug(data);
   renderProductos(data.productos||[]);
 }
@@ -370,10 +374,10 @@ function renderCart(){
     <div><b>${esc(i.producto)}</b><div class="muted">${esc(i.sku)}</div><div class="muted">Sistema: ${money(i.precio_sistema || i.precio)}</div>${i.tiene_oferta_flash ? `<div class="offer-badge">🔥 ${esc(ofertaFlashLabelPOS(i))}</div>` : ``}<label style="font-size:12px;font-weight:900">Precio unitario a cobrar</label><input class="input" type="number" min="0.01" step="0.01" value="${Number(i.precio||0)}" onchange="setPrice(${idx},this.value)" style="margin:6px 0"><div class="qty"><button onclick="qty(${idx},-1)">−</button><input value="${i.cantidad}" onchange="setQty(${idx},this.value)"><button onclick="qty(${idx},1)">+</button><span style="margin-left:auto"><b>${money(i.precio*i.cantidad)}</b></span></div>${Number(i.precio||0)>Number(i.precio_sistema||i.precio||0)?`<div style="color:#166534;font-weight:900;margin-top:4px">+${money(Number(i.precio)-Number(i.precio_sistema||0))} por pieza</div>`:''}<button class="btn gray" style="margin-top:8px;padding:8px 10px" onclick="removeItem(${idx})">Quitar</button></div>
   </div>`).join('');
   const subtotal=cart.reduce((s,i)=>s+i.precio*i.cantidad,0);
-  const desc=Number(document.getElementById('descuentoMonto')?.value||0);
+  const desc=descuentoGeneralMobile();
   document.getElementById('subtotalView').textContent=money(subtotal);
   document.getElementById('discountView').textContent=money(desc);
-  document.getElementById('totalView').textContent=money(subtotal-desc);
+  document.getElementById('totalView').textContent=money(Math.max(0, subtotal-desc));
 }
 function setPrice(i,v){cart[i].precio=Math.max(0.01,Number(v||0));renderCart()}
 function qty(i,d){cart[i].cantidad=Math.max(1,Number(cart[i].cantidad)+d);renderCart()}
@@ -409,20 +413,24 @@ function totalPagosCapturadosMobile(){
   }
   return Number(val('pagoEfectivo')||0)+Number(val('pagoTransferencia')||0)+Number(val('pagoTerminal')||0);
 }
-function descuentoGeneralMobile(){
-  const descuentoManual = Number(val('descuentoMonto')||0);
-  if(descuentoManual > 0) return Math.round((descuentoManual+Number.EPSILON)*100)/100;
+function descuentoPorcentajeMobile(){
+  return Number(document.getElementById('descuentoPorcentaje')?.value || 0) === 40 ? 40 : 0;
+}
 
+function descuentoGeneralMobile(){
   const subtotal = subtotalCarritoMobile();
-  const pago = totalPagosCapturadosMobile();
-  if(pago > 0 && pago < subtotal){
-    return Math.round((subtotal - pago + Number.EPSILON)*100)/100;
-  }
-  return 0;
+  const pct = descuentoPorcentajeMobile();
+  const descuento = pct === 40 ? Math.round((subtotal * 0.40 + Number.EPSILON)*100)/100 : 0;
+  const hidden = document.getElementById('descuentoMonto');
+  if(hidden) hidden.value = String(descuento);
+  const motivo = document.getElementById('motivoDescuento');
+  if(pct === 40 && motivo && !motivo.value) motivo.value = 'Descuento general 40% POS';
+  if(pct === 0 && motivo && motivo.value === 'Descuento general 40% POS') motivo.value = '';
+  return descuento;
 }
 
 function pagos(){
-  const total=cart.reduce((s,i)=>s+i.precio*i.cantidad,0)-Number(val('descuentoMonto')||0);
+  const total=Math.max(0, subtotalCarritoMobile()-descuentoGeneralMobile());
   if(!document.getElementById('usarPagoDividido').checked)return [{metodo:val('metodo'),monto:total}];
   return [
     {metodo:'efectivo',monto:Number(val('pagoEfectivo')||0)},
@@ -485,7 +493,7 @@ async function crearVenta(){
   guardandoVentaPOS=true;
   if(!cliente?.customer_id){guardandoVentaPOS=false;return alert('Selecciona cliente');}
   if(!cart.length){guardandoVentaPOS=false;return alert('Agrega productos');}
-  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,precio_base:i.precio_base||i.precio_sistema||i.precio,precio_final:i.precio,tiene_oferta_flash:Boolean(i.tiene_oferta_flash),oferta_flash:i.oferta_flash||null,sucursal:user.sucursal||'',costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
+  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,precio_base:i.precio_base||i.precio_sistema||i.precio,precio_final:i.precio,tiene_oferta_flash:Boolean(i.tiene_oferta_flash),oferta_flash:i.oferta_flash||null,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
   const data=await api('/pos-crear-orden-prueba',{shop:user.shop,items_json,customer_id:cliente.customer_id,customer_nombre:cliente.nombre||'',customer_telefono:cliente.telefono||'',customer_negocio:cliente.negocio||'',vendedor:user.vendedor,sucursal:user.sucursal,metodo_pago:document.getElementById('usarPagoDividido').checked?'mixto':val('metodo'),pagos_json:JSON.stringify(pagos()),permitir_negativo:'true',descuento_monto:descuentoGeneralMobile(),descuento_automatico_por_pago:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',permitir_descuento_bajo_costo:user.canBelowCost?'true':'false',nota:'VENTA POS REAL',nota_pendiente_folio:notaActiva?.folio||'',sale_intent_id:getOrCreateSaleIntentId()});
   setDebug(data);
   if(data.ok){
@@ -497,7 +505,7 @@ async function guardarNotaPendiente(){
   if(guardandoNotaPendiente) return;
   if(!cliente?.customer_id)return alert('Selecciona cliente');
   if(!cart.length)return alert('Agrega productos');
-  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,precio_base:i.precio_base||i.precio_sistema||i.precio,precio_final:i.precio,tiene_oferta_flash:Boolean(i.tiene_oferta_flash),oferta_flash:i.oferta_flash||null,sucursal:user.sucursal||'',costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
+  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,precio_base:i.precio_base||i.precio_sistema||i.precio,precio_final:i.precio,tiene_oferta_flash:Boolean(i.tiene_oferta_flash),oferta_flash:i.oferta_flash||null,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
   const cliente_json=JSON.stringify(cliente);
   guardandoNotaPendiente = true;
   const data=await api('/pos-guardar-nota-pendiente',{shop:user.shop,folio:notaActiva?.folio||'',items_json,cliente_json,vendedor:user.vendedor,sucursal:user.sucursal,usuario:user.nombre,descuento_monto:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',metodo_pago:val('metodo'),nota:'NOTA PENDIENTE POS'});
@@ -513,7 +521,7 @@ async function verNotas(){
 }
 async function abrirNota(f){const data=await api('/pos-ver-nota-pendiente',{shop:user.shop,folio:f});setDebug(data);if(data.ok)cargarNota(data.nota,false)}
 async function cobrarNota(f){const data=await api('/pos-ver-nota-pendiente',{shop:user.shop,folio:f});setDebug(data);if(data.ok)cargarNota(data.nota,true)}
-function cargarNota(n,cobrar){notaActiva=n;cliente=n.cliente;selectCliente(cliente);cart=(n.productos||[]).map(p=>({producto:p.producto,sku:p.sku,imagen:p.imagen,variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:p.location_id,precio:p.precio,precio_sistema:p.precio_sistema||p.precio_base||p.precio,precio_base:p.precio_base||p.precio_sistema||p.precio,costo:p.costo,cantidad:p.cantidad,tiene_oferta_flash:Boolean(p.tiene_oferta_flash),oferta_flash:p.oferta_flash||null}));document.getElementById('descuentoMonto').value=n.descuento_monto||0;document.getElementById('motivoDescuento').value=n.motivo_descuento||'';renderCart();showScreen('Carrito',document.querySelectorAll('.nav')[1]);if(cobrar)alert('Nota cargada. Presiona Crear venta para cobrar.')}
+function cargarNota(n,cobrar){notaActiva=n;cliente=n.cliente;selectCliente(cliente);cart=(n.productos||[]).map(p=>({producto:p.producto,sku:p.sku,imagen:p.imagen,variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:p.location_id,precio:p.precio,precio_sistema:p.precio_sistema||p.precio_base||p.precio,precio_base:p.precio_base||p.precio_sistema||p.precio,costo:p.costo,cantidad:p.cantidad,tiene_oferta_flash:Boolean(p.tiene_oferta_flash),oferta_flash:p.oferta_flash||null}));const subtotal=cart.reduce((s,i)=>s+Number(i.precio||0)*Number(i.cantidad||0),0);const desc=Number(n.descuento_monto||0);const pct=subtotal>0&&Math.abs(desc-subtotal*0.40)<0.05?40:0;const pctEl=document.getElementById('descuentoPorcentaje');if(pctEl)pctEl.value=String(pct);document.getElementById('descuentoMonto').value=pct===40?String(Math.round((subtotal*0.40+Number.EPSILON)*100)/100):'0';document.getElementById('motivoDescuento').value=n.motivo_descuento||'';renderCart();showScreen('Carrito',document.querySelectorAll('.nav')[1]);if(cobrar)alert('Nota cargada. Presiona Crear venta para cobrar.')}
 let autoTimer=null;
 function autoSuggest(){clearTimeout(autoTimer);autoTimer=setTimeout(buscarProducto,450)}
 function val(id){return document.getElementById(id)?.value||''}

@@ -217,13 +217,13 @@
 </script>
 
 <script>window.POS_ESTABLE_VERSION="POS_ESTABLE_V1_2026_05_27";</script>
-<script>window.POS_FRONTEND_VERSION='mt-flash-offers-pos-v1';</script>
-<script>window.POS_FRONTEND_VERSION='mt-flash-offers-pos-v1';</script>
+<script>window.POS_FRONTEND_VERSION='pos-descuento-general-40-v1';</script>
+<script>window.POS_FRONTEND_VERSION='pos-descuento-general-40-v1';</script>
 
 
 <script>
 (function(){
-  const CURRENT_POS_VERSION = "mt-flash-offers-pos-v1";
+  const CURRENT_POS_VERSION = "pos-descuento-general-40-v1";
   window.POS_BUILD_VERSION = CURRENT_POS_VERSION;
 
   function showUpdateBanner(){
@@ -966,8 +966,8 @@ function autoSuggest(tipo){
 
     try{
       const params = tipo === 'sku'
-        ? { shop: currentShop(), sucursal: document.getElementById('sucursal')?.value || '', sku: value }
-        : { shop: currentShop(), sucursal: document.getElementById('sucursal')?.value || '', nombre: value };
+        ? { shop: currentShop(), sku: value }
+        : { shop: currentShop(), nombre: value };
 
       const data = await api('/pos-buscar-producto', params, lastSuggestController.signal);
 
@@ -1175,7 +1175,7 @@ async function buscarProducto(){
   if(frase && !nombre && !sku) nombre=frase;
   if(!sku && !nombre){alert('Escribe SKU, nombre o frase');return}
   setResult('Buscando producto...');
-  const data=await api('/pos-buscar-producto',{shop:currentShop(),sucursal:document.getElementById('sucursal')?.value||'',sku,nombre});
+  const data=await api('/pos-buscar-producto',{shop:currentShop(),sku,nombre});
   setResult(data); renderProductos(data);
 }
 function renderProductos(data){
@@ -1255,6 +1255,13 @@ function ensureDiscountHiddenFields(){
     d.id = 'descuentoGeneralMonto';
     d.value = '0';
     document.body.appendChild(d);
+  }
+  if(!document.getElementById('descuentoGeneralPorcentaje')){
+    const pct = document.createElement('input');
+    pct.type = 'hidden';
+    pct.id = 'descuentoGeneralPorcentaje';
+    pct.value = '0';
+    document.body.appendChild(pct);
   }
 }
 
@@ -1338,11 +1345,15 @@ function renderCarrito(){
         <div class="cart-summary-mini"><span>Desc. productos</span><b>${money(d.descuentoProductos)}</b></div>
         <div class="cart-summary-mini">
           <span>Desc. general</span>
-          <input id="descuentoGeneralMontoCart" class="input" type="number" min="0" step="0.01" value="${d.descuento}" oninput="syncDescuentoGeneralDesdeCarrito(this.value)">
+          <select id="descuentoGeneralPorcentajeCart" class="input" onchange="syncDescuentoGeneralPorcentajeDesdeCarrito(this.value)">
+            <option value="0" ${d.descuentoPorcentaje === 0 ? 'selected' : ''}>Sin descuento</option>
+            <option value="40" ${d.descuentoPorcentaje === 40 ? 'selected' : ''}>40% al carrito</option>
+          </select>
+          <div class="cart-line-totals">Monto: ${money(d.descuento)}</div>
         </div>
         <div class="cart-summary-mini">
-          <span>Motivo opcional</span>
-          <input id="motivoDescuentoCart" class="input" value="${escapeHtml(d.motivo)}" oninput="syncMotivoDescuentoDesdeCarrito(this.value)" placeholder="Motivo opcional">
+          <span>Motivo</span>
+          <input id="motivoDescuentoCart" class="input" value="${escapeHtml(d.motivo)}" oninput="syncMotivoDescuentoDesdeCarrito(this.value)" placeholder="Opcional">
         </div>
       </div>
       <div class="cart-total-final"><span>Total final</span><b>${money(d.totalFinal)}</b></div>
@@ -1372,10 +1383,44 @@ function setDescuentoProducto(index, value){
   renderCarrito();
 }
 
-function syncDescuentoGeneralDesdeCarrito(value){
-  const main = document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto');
-  if(main) main.value = Math.max(0, Number(value || 0));
+function obtenerDescuentoGeneralPorcentajePOS(){
+  const raw = document.getElementById('descuentoGeneralPorcentaje')?.value ||
+    document.getElementById('descuentoGeneralPorcentajeCart')?.value ||
+    '0';
+  return Number(raw) === 40 ? 40 : 0;
+}
+
+function actualizarDescuentoGeneralMontoPOS(){
+  ensureDiscountHiddenFields();
+  const pct = obtenerDescuentoGeneralPorcentajePOS();
+  const base = redondearLocal(subtotalDespuesDescuentoProductos());
+  const monto = pct === 40 ? redondearLocal(base * 0.40) : 0;
+  const main = document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto');
+  if(main) main.value = String(monto);
+  return monto;
+}
+
+function syncDescuentoGeneralPorcentajeDesdeCarrito(value){
+  ensureDiscountHiddenFields();
+  const pct = Number(value) === 40 ? 40 : 0;
+  const hidden = document.getElementById('descuentoGeneralPorcentaje');
+  if(hidden) hidden.value = String(pct);
+  const motivo = document.getElementById('motivoDescuento');
+  const motivoCart = document.getElementById('motivoDescuentoCart');
+  if(pct === 40){
+    const texto = 'Descuento general 40% POS';
+    if(motivo && (!motivo.value || motivo.value === 'Descuento POS')) motivo.value = texto;
+    if(motivoCart && (!motivoCart.value || motivoCart.value === 'Descuento POS')) motivoCart.value = texto;
+  } else {
+    if(motivo && motivo.value === 'Descuento general 40% POS') motivo.value = '';
+    if(motivoCart && motivoCart.value === 'Descuento general 40% POS') motivoCart.value = '';
+  }
   renderCarrito();
+}
+
+function syncDescuentoGeneralDesdeCarrito(value){
+  // Compatibilidad con versiones viejas: ya no hay descuento libre en pesos.
+  syncDescuentoGeneralPorcentajeDesdeCarrito(Number(value || 0) > 0 ? 40 : 0);
 }
 
 function syncMotivoDescuentoDesdeCarrito(value){
@@ -1583,23 +1628,29 @@ function sincronizarMotivoDescuentoActual(){
 }
 
 function descuentoInfo(){
+  ensureDiscountHiddenFields();
   const subtotal = redondearLocal(subtotalCarrito());
   const descuentoProductos = redondearLocal(descuentoProductosCarrito());
   const subtotalConProductos = redondearLocal(subtotalDespuesDescuentoProductos());
   const costoMinimo = redondearLocal(costoMinimoCarrito());
-  const descuento = Math.max(0, Number(document.getElementById('descuentoGeneralMonto')?.value || (document.getElementById('descuentoGeneralMonto')||document.getElementById('descuentoMonto'))?.value || 0));
+  const descuentoPorcentaje = obtenerDescuentoGeneralPorcentajePOS();
+  const descuento = redondearLocal(descuentoPorcentaje === 40 ? subtotalConProductos * 0.40 : 0);
+  const main = document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto');
+  if(main) main.value = String(descuento);
   const totalFinal = redondearLocal(subtotalConProductos - descuento);
   let motivo = (
     document.getElementById('motivoDescuentoCart')?.value ||
     document.getElementById('motivoDescuento')?.value ||
     ''
   ).trim();
-  if(!motivo && (descuento > 0 || descuentoProductos > 0)) {
+  if(!motivo && descuentoPorcentaje === 40) {
+    motivo = 'Descuento general 40% POS';
+  } else if(!motivo && descuentoProductos > 0) {
     motivo = 'Descuento POS';
   }
   const bajoCosto = costoMinimo > 0 && totalFinal < costoMinimo;
   const puedeBajoCosto = Boolean(activeUser?.nombre === 'Osvaldo' || activeUser?.nombre === 'Daniel' || activeUser?.canBelowCost);
-  return { subtotal, descuentoProductos, subtotalConProductos, costoMinimo, descuento, totalFinal, motivo, bajoCosto, puedeBajoCosto };
+  return { subtotal, descuentoProductos, subtotalConProductos, costoMinimo, descuento, descuentoPorcentaje, totalFinal, motivo, bajoCosto, puedeBajoCosto };
 }
 
 function actualizarResumenDescuento(){
@@ -1621,7 +1672,7 @@ function actualizarResumenDescuento(){
   box.innerHTML = `
     <div class="discount-mini"><span>Subtotal original</span><br><b>${money(d.subtotal)}</b></div>
     <div class="discount-mini"><span>Desc. productos</span><br><b>${money(d.descuentoProductos)}</b></div>
-    <div class="discount-mini"><span>Desc. general</span><br><b>${money(d.descuento)}</b></div>
+    <div class="discount-mini"><span>Desc. general ${d.descuentoPorcentaje ? `(${d.descuentoPorcentaje}%)` : ``}</span><br><b>${money(d.descuento)}</b></div>
     <div class="discount-mini"><span>Total final</span><br><b>${money(d.totalFinal)}</b></div>
     <div class="discount-mini ${cls}"><span>Estado</span><br><b>${estado}</b></div>
   `;
@@ -1751,62 +1802,18 @@ function resetSaleIntentId(){
 
 
 function descuentoAutomaticoPorPagoPOS(){
-  const subtotalDespuesProductos = typeof subtotalDespuesDescuentoProductos === 'function'
-    ? Number(subtotalDespuesDescuentoProductos() || 0)
-    : carrito.reduce((s,i)=>s+Number(i.precio||0)*Number(i.cantidad||0),0);
-
-  const descuentoManual = Number((document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto'))?.value || 0);
-
-  // Si ya pusieron descuento manual, respetarlo.
-  if(descuentoManual > 0) return {
-    descuentoGeneral: Math.round((descuentoManual + Number.EPSILON)*100)/100,
-    descuentoAutomatico: 0,
-    totalFinal: Math.round((subtotalDespuesProductos - descuentoManual + Number.EPSILON)*100)/100
-  };
-
-  let totalPagos = 0;
-  const usarDividido = document.getElementById('usarPagoDividido')?.checked;
-
-  if(usarDividido){
-    totalPagos = [
-      'pagoEfectivo',
-      'pagoTransferencia',
-      'pagoTerminal',
-      'pagoDeposito',
-      'pagoMercado'
-    ].reduce((s,id)=>s+Number(document.getElementById(id)?.value||0),0);
-  }
-
-  if(totalPagos > 0 && totalPagos < subtotalDespuesProductos){
-    const desc = Math.round((subtotalDespuesProductos - totalPagos + Number.EPSILON)*100)/100;
-    return { descuentoGeneral: desc, descuentoAutomatico: desc, totalFinal: totalPagos };
-  }
-
-  return { descuentoGeneral: 0, descuentoAutomatico: 0, totalFinal: subtotalDespuesProductos };
+  // Desactivado: el POS ahora solo permite descuento general 40% o sin descuento.
+  const totalFinal = typeof descuentoInfo === 'function' ? Number(descuentoInfo().totalFinal || 0) : 0;
+  return { descuentoGeneral: 0, descuentoAutomatico: 0, totalFinal };
 }
 
 
 function calcularDescuentoPorPagoCapturadoDesktop(){
-  const subtotalDespuesProductos = typeof subtotalDespuesDescuentoProductos === 'function'
-    ? Number(subtotalDespuesDescuentoProductos() || 0)
-    : carrito.reduce((s,i)=>s+Number(i.precio||0)*Number(i.cantidad||0),0);
-
-  const descuentoManual = Number((document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto'))?.value || 0);
-  if(descuentoManual > 0) return { descuentoGeneral: descuentoManual, descuentoAuto: 0 };
-
-  if(!document.getElementById('usarPagoDividido')?.checked) return { descuentoGeneral: 0, descuentoAuto: 0 };
-
-  const totalPagos = [
-    'pagoEfectivo','pagoTransferencia','pagoTerminal','pagoDeposito','pagoMercado'
-  ].reduce((s,id)=>s+Number(document.getElementById(id)?.value||0),0);
-
-  if(totalPagos > 0 && totalPagos < subtotalDespuesProductos){
-    const desc = Math.round((subtotalDespuesProductos - totalPagos + Number.EPSILON)*100)/100;
-    return { descuentoGeneral: desc, descuentoAuto: desc };
-  }
-
+  // Desactivado para evitar descuentos libres por diferencia de pagos.
+  // El único descuento general del carrito es 40% o 0%.
   return { descuentoGeneral: 0, descuentoAuto: 0 };
 }
+
 
 async function crearOrden(tipoVenta='real'){
   if(guardandoVentaPOS) return;
@@ -1854,7 +1861,6 @@ async function crearOrden(tipoVenta='real'){
     precio_final: item.precio,
     tiene_oferta_flash: Boolean(item.tiene_oferta_flash),
     oferta_flash: item.oferta_flash || null,
-    sucursal: document.getElementById('sucursal')?.value || '',
     costo: item.costo || 0,
     descuento_producto: item.descuento_producto || 0,
     sku: item.sku,
@@ -2331,7 +2337,7 @@ async function buscarIAProductos(){
 
   for(const term of terms){
     try{
-      const data = await api('/pos-buscar-producto', { shop: currentShop(), sucursal: document.getElementById('sucursal')?.value || '', nombre: term });
+      const data = await api('/pos-buscar-producto', { shop: currentShop(), nombre: term });
       if(data.ok && data.productos){
         for(const p of data.productos){
           if(!productosMap.has(p.variant_id)){
@@ -2413,7 +2419,6 @@ async function guardarNotaPendiente(){
     precio_final: item.precio,
     tiene_oferta_flash: Boolean(item.tiene_oferta_flash),
     oferta_flash: item.oferta_flash || null,
-    sucursal: document.getElementById('sucursal')?.value || '',
     costo: item.costo || 0,
     descuento_producto: item.descuento_producto || 0,
     sku: item.sku,
@@ -2603,8 +2608,13 @@ function cargarNotaPendienteEnCarrito(nota){
     cantidad: Number(p.cantidad || 0)
   })).filter(p => p.variant_id && p.cantidad > 0);
 
-  const dm = document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto');
-  if(dm) dm.value = Number(nota.descuento_monto || 0);
+  const subtotalNota = carrito.reduce((sum, item) => sum + Number(item.precio || 0) * Number(item.cantidad || 0), 0);
+  const descNota = Number(nota.descuento_monto || 0);
+  const pctNota = subtotalNota > 0 && Math.abs(descNota - subtotalNota * 0.40) < 0.05 ? 40 : 0;
+  const pctHidden = document.getElementById('descuentoGeneralPorcentaje');
+  if(pctHidden) pctHidden.value = String(pctNota);
+  const dm = document.getElementById('descuentoGeneralMonto') || document.getElementById('descuentoMonto');
+  if(dm) dm.value = pctNota === 40 ? String(redondearLocal(subtotalNota * 0.40)) : '0';
 
   const md = document.getElementById('motivoDescuento');
   if(md) md.value = nota.motivo_descuento || '';
