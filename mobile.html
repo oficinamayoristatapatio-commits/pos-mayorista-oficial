@@ -39,6 +39,9 @@
     .noimg{width:86px;height:86px;border-radius:14px;border:1px solid var(--line);background:#fff1f1;color:var(--red);display:grid;place-items:center;font-size:11px;font-weight:900}
     .pname{font-weight:950;font-size:14px;line-height:1.2}
     .price{font-weight:950;font-size:17px;margin-top:6px}
+    .old-price{text-decoration:line-through;color:#94a3b8;font-weight:900;margin-right:6px}
+    .offer-price{color:var(--red);font-weight:950;font-size:17px}
+    .offer-badge{display:inline-block;border-radius:999px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;padding:4px 8px;font-size:11px;font-weight:950;margin-top:5px}
     .stock{display:inline-block;margin-top:5px;border-radius:999px;padding:4px 7px;font-size:11px;font-weight:900;background:#f3f4f6;color:#374151}
     .stock.bad{background:#fee2e2;color:#991b1b}.stock.ok{background:#dcfce7;color:#166534}.stock.warn{background:#ffedd5;color:#9a3412}
     .addbtn{width:40px;height:40px;border-radius:14px;background:var(--red);color:#fff;border:0;font-weight:950;font-size:22px}
@@ -70,13 +73,13 @@
   </style>
 <script>window.POS_UPDATE_VERSION="POS_UPDATE_VERSION_2026_05_25_MOBILE_BUSQUEDA_ACENTO_SIN_MOTIVO";</script>
 <script>window.POS_ESTABLE_VERSION="POS_ESTABLE_V1_2026_05_27";</script>
-<script>window.POS_FRONTEND_VERSION='precio-unitario-manual-v3';</script>
-<script>window.POS_FRONTEND_VERSION='precio-unitario-manual-v3';</script>
+<script>window.POS_FRONTEND_VERSION='mt-flash-offers-pos-v1';</script>
+<script>window.POS_FRONTEND_VERSION='mt-flash-offers-pos-v1';</script>
 
 
 <script>
 (function(){
-  const CURRENT_POS_VERSION = "precio-unitario-manual-v3";
+  const CURRENT_POS_VERSION = "mt-flash-offers-pos-v1";
   window.POS_BUILD_VERSION = CURRENT_POS_VERSION;
 
   function showUpdateBanner(){
@@ -270,6 +273,13 @@ const USERS={
 let user=null, cart=[]; let guardandoNotaPendiente=false; let guardandoVentaPOS=false; let saleIntentIdPOS=null, cliente=null, locations=[], currentLocationId='', suggestTimer=null, notaActiva=null;
 
 function money(n){return Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'})}
+
+function precioBasePOS(p){return Number(p?.precio_base ?? p?.precio_sistema ?? p?.precio ?? 0)}
+function precioFinalPOS(p){return Number(p?.precio_final ?? p?.precio_oferta ?? p?.precio ?? 0)}
+function tieneOfertaFlashPOS(p){const final=precioFinalPOS(p),base=precioBasePOS(p);return Boolean(p?.tiene_oferta_flash===true||p?.oferta_flash?.activa===true||p?.oferta_flash?.active===true||p?.precio_oferta_activo===true||(base>0&&final>0&&final<base))}
+function ofertaFlashLabelPOS(p){const of=p?.oferta_flash||{};return of.titulo||of.campaignLabel||of.offerLabel||p?.badgeText||'OFERTA ACTIVA'}
+function precioHtmlPOS(p){const base=precioBasePOS(p),final=precioFinalPOS(p);return tieneOfertaFlashPOS(p)?`<div class="price"><span class="old-price">${money(base)}</span><span class="offer-price">${money(final)}</span><br><span class="offer-badge">🔥 ${esc(ofertaFlashLabelPOS(p))}</span></div>`:`<div class="price">${money(final)}</div>`}
+function itemCarritoDesdeProductoPOS(p){const precioBase=precioBasePOS(p),precioFinal=precioFinalPOS(p);return {producto:p.producto,sku:p.sku,imagen:p.imagen||'',variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:currentLocationId,precio:precioFinal,precio_sistema:precioBase,precio_base:precioBase,costo:Number(p.costo||0),cantidad:1,tiene_oferta_flash:tieneOfertaFlashPOS(p),oferta_flash:p.oferta_flash||null}}
 function setDebug(o){document.getElementById('debug').textContent=typeof o==='string'?o:JSON.stringify(o,null,2)}
 function toggleDebug(){document.getElementById('debug').classList.toggle('show')}
 async function api(path,params){
@@ -337,7 +347,7 @@ function renderProductos(products){
     const cls=stock<=0?'bad':stock<=3?'warn':'ok';
     return `<div class="product">
       ${p.imagen?`<img class="pimg" src="${p.imagen}">`:`<div class="noimg">Sin img</div>`}
-      <div><div class="pname">${esc(p.producto)}</div><div class="muted">SKU: ${esc(p.sku||'')}</div><span class="stock ${cls}">Stock: ${stock}</span><div class="price">${money(p.precio)}</div></div>
+      <div><div class="pname">${esc(p.producto)}</div><div class="muted">SKU: ${esc(p.sku||'')}</div><span class="stock ${cls}">Stock: ${stock}</span>${precioHtmlPOS(p)}</div>
       <button class="addbtn" onclick='addCart(${JSON.stringify(p).replace(/'/g,"&#39;")})'>+</button>
     </div>`
   }).join('');
@@ -345,7 +355,7 @@ function renderProductos(products){
 function addCart(p){
   if(!currentLocationId)return alert('No hay ubicación cargada');
   const ex=cart.find(i=>i.variant_id===p.variant_id);
-  if(ex)ex.cantidad++;else cart.push({producto:p.producto,sku:p.sku,imagen:p.imagen||'',variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:currentLocationId,precio:Number(p.precio||0),precio_sistema:Number(p.precio||0),costo:Number(p.costo||0),cantidad:1});
+  if(ex)ex.cantidad++;else cart.push(itemCarritoDesdeProductoPOS(p));
   document.getElementById('products').innerHTML='';
   document.getElementById('busqueda').value='';
   renderCart();
@@ -357,7 +367,7 @@ function renderCart(){
   if(!cart.length){box.innerHTML='<p class="muted">No hay productos en el carrito.</p>'}
   else box.innerHTML=cart.map((i,idx)=>`<div class="cart-item">
     ${i.imagen?`<img class="cart-img" src="${i.imagen}">`:`<div class="cart-img"></div>`}
-    <div><b>${esc(i.producto)}</b><div class="muted">${esc(i.sku)}</div><div class="muted">Sistema: ${money(i.precio_sistema || i.precio)}</div><label style="font-size:12px;font-weight:900">Precio unitario a cobrar</label><input class="input" type="number" min="0.01" step="0.01" value="${Number(i.precio||0)}" onchange="setPrice(${idx},this.value)" style="margin:6px 0"><div class="qty"><button onclick="qty(${idx},-1)">−</button><input value="${i.cantidad}" onchange="setQty(${idx},this.value)"><button onclick="qty(${idx},1)">+</button><span style="margin-left:auto"><b>${money(i.precio*i.cantidad)}</b></span></div>${Number(i.precio||0)>Number(i.precio_sistema||i.precio||0)?`<div style="color:#166534;font-weight:900;margin-top:4px">+${money(Number(i.precio)-Number(i.precio_sistema||0))} por pieza</div>`:''}<button class="btn gray" style="margin-top:8px;padding:8px 10px" onclick="removeItem(${idx})">Quitar</button></div>
+    <div><b>${esc(i.producto)}</b><div class="muted">${esc(i.sku)}</div><div class="muted">Sistema: ${money(i.precio_sistema || i.precio)}</div>${i.tiene_oferta_flash ? `<div class="offer-badge">🔥 ${esc(ofertaFlashLabelPOS(i))}</div>` : ``}<label style="font-size:12px;font-weight:900">Precio unitario a cobrar</label><input class="input" type="number" min="0.01" step="0.01" value="${Number(i.precio||0)}" onchange="setPrice(${idx},this.value)" style="margin:6px 0"><div class="qty"><button onclick="qty(${idx},-1)">−</button><input value="${i.cantidad}" onchange="setQty(${idx},this.value)"><button onclick="qty(${idx},1)">+</button><span style="margin-left:auto"><b>${money(i.precio*i.cantidad)}</b></span></div>${Number(i.precio||0)>Number(i.precio_sistema||i.precio||0)?`<div style="color:#166534;font-weight:900;margin-top:4px">+${money(Number(i.precio)-Number(i.precio_sistema||0))} por pieza</div>`:''}<button class="btn gray" style="margin-top:8px;padding:8px 10px" onclick="removeItem(${idx})">Quitar</button></div>
   </div>`).join('');
   const subtotal=cart.reduce((s,i)=>s+i.precio*i.cantidad,0);
   const desc=Number(document.getElementById('descuentoMonto')?.value||0);
@@ -475,7 +485,7 @@ async function crearVenta(){
   guardandoVentaPOS=true;
   if(!cliente?.customer_id){guardandoVentaPOS=false;return alert('Selecciona cliente');}
   if(!cart.length){guardandoVentaPOS=false;return alert('Agrega productos');}
-  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
+  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,precio_base:i.precio_base||i.precio_sistema||i.precio,precio_final:i.precio,tiene_oferta_flash:Boolean(i.tiene_oferta_flash),oferta_flash:i.oferta_flash||null,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
   const data=await api('/pos-crear-orden-prueba',{shop:user.shop,items_json,customer_id:cliente.customer_id,customer_nombre:cliente.nombre||'',customer_telefono:cliente.telefono||'',customer_negocio:cliente.negocio||'',vendedor:user.vendedor,sucursal:user.sucursal,metodo_pago:document.getElementById('usarPagoDividido').checked?'mixto':val('metodo'),pagos_json:JSON.stringify(pagos()),permitir_negativo:'true',descuento_monto:descuentoGeneralMobile(),descuento_automatico_por_pago:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',permitir_descuento_bajo_costo:user.canBelowCost?'true':'false',nota:'VENTA POS REAL',nota_pendiente_folio:notaActiva?.folio||'',sale_intent_id:getOrCreateSaleIntentId()});
   setDebug(data);
   if(data.ok){
@@ -487,7 +497,7 @@ async function guardarNotaPendiente(){
   if(guardandoNotaPendiente) return;
   if(!cliente?.customer_id)return alert('Selecciona cliente');
   if(!cart.length)return alert('Agrega productos');
-  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
+  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,precio_base:i.precio_base||i.precio_sistema||i.precio,precio_final:i.precio,tiene_oferta_flash:Boolean(i.tiene_oferta_flash),oferta_flash:i.oferta_flash||null,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
   const cliente_json=JSON.stringify(cliente);
   guardandoNotaPendiente = true;
   const data=await api('/pos-guardar-nota-pendiente',{shop:user.shop,folio:notaActiva?.folio||'',items_json,cliente_json,vendedor:user.vendedor,sucursal:user.sucursal,usuario:user.nombre,descuento_monto:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',metodo_pago:val('metodo'),nota:'NOTA PENDIENTE POS'});
@@ -503,7 +513,7 @@ async function verNotas(){
 }
 async function abrirNota(f){const data=await api('/pos-ver-nota-pendiente',{shop:user.shop,folio:f});setDebug(data);if(data.ok)cargarNota(data.nota,false)}
 async function cobrarNota(f){const data=await api('/pos-ver-nota-pendiente',{shop:user.shop,folio:f});setDebug(data);if(data.ok)cargarNota(data.nota,true)}
-function cargarNota(n,cobrar){notaActiva=n;cliente=n.cliente;selectCliente(cliente);cart=(n.productos||[]).map(p=>({producto:p.producto,sku:p.sku,imagen:p.imagen,variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:p.location_id,precio:p.precio,precio_sistema:p.precio_sistema||p.precio,costo:p.costo,cantidad:p.cantidad}));document.getElementById('descuentoMonto').value=n.descuento_monto||0;document.getElementById('motivoDescuento').value=n.motivo_descuento||'';renderCart();showScreen('Carrito',document.querySelectorAll('.nav')[1]);if(cobrar)alert('Nota cargada. Presiona Crear venta para cobrar.')}
+function cargarNota(n,cobrar){notaActiva=n;cliente=n.cliente;selectCliente(cliente);cart=(n.productos||[]).map(p=>({producto:p.producto,sku:p.sku,imagen:p.imagen,variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:p.location_id,precio:p.precio,precio_sistema:p.precio_sistema||p.precio_base||p.precio,precio_base:p.precio_base||p.precio_sistema||p.precio,costo:p.costo,cantidad:p.cantidad,tiene_oferta_flash:Boolean(p.tiene_oferta_flash),oferta_flash:p.oferta_flash||null}));document.getElementById('descuentoMonto').value=n.descuento_monto||0;document.getElementById('motivoDescuento').value=n.motivo_descuento||'';renderCart();showScreen('Carrito',document.querySelectorAll('.nav')[1]);if(cobrar)alert('Nota cargada. Presiona Crear venta para cobrar.')}
 let autoTimer=null;
 function autoSuggest(){clearTimeout(autoTimer);autoTimer=setTimeout(buscarProducto,450)}
 function val(id){return document.getElementById(id)?.value||''}

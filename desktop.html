@@ -108,6 +108,10 @@
     .noimg{width:118px;height:118px;border-radius:20px;background:#fff1f1;color:var(--red);display:grid;place-items:center;font-weight:950;border:1px solid #ffd1d1}
     .alert{border-radius:999px;padding:7px 10px;font-size:12px;font-weight:850;display:inline-flex;margin:3px 4px 0 0}
     .alert.ok{background:#ecfdf5;color:#166534}.alert.warn{background:#fff7ed;color:#9a3412}.alert.bad{background:#fef2f2;color:#991b1b}.alert.info{background:#eff6ff;color:#1d4ed8}
+    .flash-price{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .old-price{text-decoration:line-through;color:#94a3b8;font-weight:900}
+    .offer-price{color:var(--red);font-size:18px;font-weight:950}
+    .offer-badge{display:inline-flex;align-items:center;border-radius:999px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;padding:5px 9px;font-size:11px;font-weight:950}
     table{width:100%;border-collapse:collapse;margin-top:12px}
     th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:14px;vertical-align:top}
     th{color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
@@ -213,13 +217,13 @@
 </script>
 
 <script>window.POS_ESTABLE_VERSION="POS_ESTABLE_V1_2026_05_27";</script>
-<script>window.POS_FRONTEND_VERSION='precio-unitario-manual-v3';</script>
-<script>window.POS_FRONTEND_VERSION='precio-unitario-manual-v3';</script>
+<script>window.POS_FRONTEND_VERSION='mt-flash-offers-pos-v1';</script>
+<script>window.POS_FRONTEND_VERSION='mt-flash-offers-pos-v1';</script>
 
 
 <script>
 (function(){
-  const CURRENT_POS_VERSION = "precio-unitario-manual-v3";
+  const CURRENT_POS_VERSION = "mt-flash-offers-pos-v1";
   window.POS_BUILD_VERSION = CURRENT_POS_VERSION;
 
   function showUpdateBanner(){
@@ -824,6 +828,66 @@ function syncCancelacionShopWithUser(){
 }
 
 function money(n){return Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'})}
+
+function precioBasePOS(p){
+  return Number(p?.precio_base ?? p?.precio_sistema ?? p?.precio ?? 0);
+}
+function precioFinalPOS(p){
+  return Number(p?.precio_final ?? p?.precio_oferta ?? p?.precio ?? 0);
+}
+function tieneOfertaFlashPOS(p){
+  const final = precioFinalPOS(p);
+  const base = precioBasePOS(p);
+  return Boolean(
+    p?.tiene_oferta_flash === true ||
+    p?.oferta_flash?.activa === true ||
+    p?.oferta_flash?.active === true ||
+    p?.precio_oferta_activo === true ||
+    (base > 0 && final > 0 && final < base)
+  );
+}
+function ofertaFlashLabelPOS(p){
+  const of = p?.oferta_flash || p?.offer || {};
+  return of.titulo || of.campaignLabel || of.offerLabel || p?.badgeText || 'OFERTA ACTIVA';
+}
+function precioHtmlPOS(p){
+  const base = precioBasePOS(p);
+  const final = precioFinalPOS(p);
+  if(tieneOfertaFlashPOS(p)){
+    return `<div class="flash-price"><span class="old-price">${money(base)}</span><span class="offer-price">${money(final)}</span><span class="offer-badge">🔥 ${escapeHtml(ofertaFlashLabelPOS(p))}</span></div>`;
+  }
+  return `<div class="flash-price"><span class="offer-price">${money(final)}</span></div>`;
+}
+function ofertaFlashMetaPOS(p){
+  if(!tieneOfertaFlashPOS(p)) return '';
+  const of = p.oferta_flash || {};
+  const limite = Number(of.limite_piezas || of.maxQuantity || p.maxQuantity || 0);
+  const termina = of.termina_at || of.endsAt || p.endsAt || '';
+  const partes = [];
+  if(limite > 0) partes.push(`Tope: ${limite} pz`);
+  if(termina) partes.push(`Termina: ${formatDateMx ? formatDateMx(termina) : termina}`);
+  return partes.length ? `<div class="muted" style="margin-top:4px">${partes.map(escapeHtml).join(' · ')}</div>` : '';
+}
+function itemCarritoDesdeProductoPOS(p, selectedLocation, cantidad){
+  const precioBase = precioBasePOS(p);
+  const precioFinal = precioFinalPOS(p);
+  return {
+    producto:p.producto,
+    variante:p.variante,
+    sku:p.sku,
+    imagen:p.imagen||'',
+    variant_id:p.variant_id,
+    inventory_item_id:p.inventory_item_id,
+    location_id:selectedLocation,
+    precio:precioFinal,
+    precio_sistema:precioBase,
+    precio_base:precioBase,
+    costo:Number(p.costo||0),
+    cantidad,
+    tiene_oferta_flash:tieneOfertaFlashPOS(p),
+    oferta_flash:p.oferta_flash || null
+  };
+}
 function setResult(obj){
   const text = typeof obj==='string'?obj:JSON.stringify(obj,null,2);
   const r = document.getElementById('result');
@@ -934,7 +998,7 @@ function renderSugerencias(box, productos, tipo){
         <div>
           <div class="s-title">${escapeHtml(p.producto)}</div>
           <div class="s-meta">SKU: ${escapeHtml(p.sku || '')} · Variante: ${escapeHtml(p.variante || '')}</div>
-          <div class="s-price">${money(p.precio)}</div>
+          ${precioHtmlPOS(p)}${ofertaFlashMetaPOS(p)}
           <span class="s-stock ${available <= 0 ? 'bad' : available <= 3 ? 'warn' : 'ok'}">Stock ubicación: ${available}</span>
           <span class="s-stock">Stock total: ${p.inventario_total}</span>
         </div>
@@ -1127,7 +1191,8 @@ function renderProductos(data){
     else if(available<=3) alerts.push(`<span class="alert warn">Stock bajo: ${available}</span>`);
     else alerts.push(`<span class="alert ok">Stock ubicación: ${available}</span>`);
     if(!p.costo || p.costo<=0) alerts.push(`<span class="alert warn">Sin costo</span>`);
-    if(p.costo>0 && p.precio>0 && p.precio<=p.costo) alerts.push(`<span class="alert bad">Precio ≤ costo</span>`);
+    if(p.costo>0 && precioFinalPOS(p)>0 && precioFinalPOS(p)<=p.costo) alerts.push(`<span class="alert bad">Precio ≤ costo</span>`);
+    if(tieneOfertaFlashPOS(p)) alerts.push(`<span class="alert info">🔥 Precio oferta activo</span>`);
     const costoHtml='';
     const div=document.createElement('div');
     div.className='product';
@@ -1139,9 +1204,11 @@ function renderProductos(data){
         <div style="margin-top:6px">${alerts.join('')}</div>
         <div class="row" style="margin-top:8px">
           <span class="pill">SKU: ${escapeHtml(p.sku||'')}</span>
-          <span class="pill">Precio: ${money(p.precio)}</span>
+          <span class="pill">Precio: ${money(precioFinalPOS(p))}</span>
+          ${tieneOfertaFlashPOS(p) ? `<span class="pill" style="color:#991b1b;background:#fee2e2;border-color:#fecaca">🔥 Oferta activa</span>` : ``}
           <span class="pill">Stock total: ${p.inventario_total}</span>
         </div>
+        ${precioHtmlPOS(p)}${ofertaFlashMetaPOS(p)}
       </div>
       <div>
         <input class="input" id="qty-${cssId(p.variant_id)}" type="number" min="1" value="1" style="width:90px;margin-bottom:8px">
@@ -1164,7 +1231,7 @@ function agregarCarrito(p){
     console.warn(`Inventario negativo permitido. Disponible: ${available}, esperado: ${available-cantidad}.`);
   }
   const existente=carrito.find(i=>i.variant_id===p.variant_id && i.location_id===selectedLocation);
-  if(existente) existente.cantidad+=cantidad; else carrito.push({producto:p.producto,variante:p.variante,sku:p.sku,imagen:p.imagen||'',variant_id:p.variant_id,inventory_item_id:p.inventory_item_id,location_id:selectedLocation,precio:Number(p.precio||0),precio_sistema:Number(p.precio||0),costo:Number(p.costo||0),cantidad});
+  if(existente) existente.cantidad+=cantidad; else carrito.push(itemCarritoDesdeProductoPOS(p, selectedLocation, cantidad));
   renderCarrito();
   const productsBox = document.getElementById('products');
   if(productsBox) productsBox.innerHTML = '';
@@ -1223,7 +1290,7 @@ function renderCarrito(){
             <div>
               <div class="cart-line-title">${escapeHtml(item.producto)}</div>
               <div class="muted">${escapeHtml(item.sku)} ${escapeHtml(item.variante||'')}</div>
-              <div class="cart-line-totals">Precio unitario sistema: ${money(item.precio_sistema || item.precio)} · Precio unitario a cobrar: ${money(item.precio)} · Subtotal: ${money(subtotal)}</div>
+              <div class="cart-line-totals">Precio unitario sistema: ${money(item.precio_sistema || item.precio)} · Precio unitario a cobrar: ${money(item.precio)} · Subtotal: ${money(subtotal)}</div>${item.tiene_oferta_flash ? `<div class="offer-badge" style="margin-top:6px">🔥 ${escapeHtml(ofertaFlashLabelPOS(item))}</div>` : ``}
               ${Number(item.precio || 0) > Number(item.precio_sistema || item.precio || 0) ? `<div style="color:#166534;font-weight:900;margin-top:4px">Precio arriba del sistema: +${money(Number(item.precio)-Number(item.precio_sistema||0))} por pieza</div>` : ``}
               ${descProd>0 ? `<div style="color:var(--red);font-weight:900;margin-top:4px">Desc. producto: -${money(descProd)}</div>` : ``}
             </div>
@@ -1783,6 +1850,10 @@ async function crearOrden(tipoVenta='real'){
     cantidad: item.cantidad,
     precio: item.precio,
     precio_sistema: item.precio_sistema || item.precio,
+    precio_base: item.precio_base || item.precio_sistema || item.precio,
+    precio_final: item.precio,
+    tiene_oferta_flash: Boolean(item.tiene_oferta_flash),
+    oferta_flash: item.oferta_flash || null,
     costo: item.costo || 0,
     descuento_producto: item.descuento_producto || 0,
     sku: item.sku,
@@ -2337,6 +2408,10 @@ async function guardarNotaPendiente(){
     cantidad: item.cantidad,
     precio: item.precio,
     precio_sistema: item.precio_sistema || item.precio,
+    precio_base: item.precio_base || item.precio_sistema || item.precio,
+    precio_final: item.precio,
+    tiene_oferta_flash: Boolean(item.tiene_oferta_flash),
+    oferta_flash: item.oferta_flash || null,
     costo: item.costo || 0,
     descuento_producto: item.descuento_producto || 0,
     sku: item.sku,
@@ -2517,7 +2592,10 @@ function cargarNotaPendienteEnCarrito(nota){
     location_id: p.location_id || document.getElementById('location')?.value || '',
     location_name: p.location_name || '',
     precio: Number(p.precio || 0),
-    precio_sistema: Number(p.precio_sistema || p.precio || 0),
+    precio_sistema: Number(p.precio_sistema || p.precio_base || p.precio || 0),
+    precio_base: Number(p.precio_base || p.precio_sistema || p.precio || 0),
+    tiene_oferta_flash: Boolean(p.tiene_oferta_flash),
+    oferta_flash: p.oferta_flash || null,
     costo: Number(p.costo || 0),
     descuento_producto: Number(p.descuento_producto || 0),
     cantidad: Number(p.cantidad || 0)
