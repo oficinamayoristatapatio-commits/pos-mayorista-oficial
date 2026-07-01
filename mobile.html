@@ -335,7 +335,7 @@ async function buscarProducto(){
   const q=document.getElementById('busqueda').value.trim();
   if(!q)return;
   const isSku=/^[A-Za-z0-9\-_]{3,}$/.test(q)&&!q.includes(' ');
-  const data=await api('/pos-buscar-producto',{shop:user.shop,[isSku?'sku':'nombre']:q});
+  const data=await api('/pos-buscar-producto',{shop:user.shop,sucursal:user.sucursal||'', [isSku?'sku':'nombre']:q});
   setDebug(data);
   renderProductos(data.productos||[]);
 }
@@ -485,7 +485,7 @@ async function crearVenta(){
   guardandoVentaPOS=true;
   if(!cliente?.customer_id){guardandoVentaPOS=false;return alert('Selecciona cliente');}
   if(!cart.length){guardandoVentaPOS=false;return alert('Agrega productos');}
-  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,precio_base:i.precio_base||i.precio_sistema||i.precio,precio_final:i.precio,tiene_oferta_flash:Boolean(i.tiene_oferta_flash),oferta_flash:i.oferta_flash||null,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
+  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,precio_base:i.precio_base||i.precio_sistema||i.precio,precio_final:i.precio,tiene_oferta_flash:Boolean(i.tiene_oferta_flash),oferta_flash:i.oferta_flash||null,sucursal:user.sucursal||'',costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
   const data=await api('/pos-crear-orden-prueba',{shop:user.shop,items_json,customer_id:cliente.customer_id,customer_nombre:cliente.nombre||'',customer_telefono:cliente.telefono||'',customer_negocio:cliente.negocio||'',vendedor:user.vendedor,sucursal:user.sucursal,metodo_pago:document.getElementById('usarPagoDividido').checked?'mixto':val('metodo'),pagos_json:JSON.stringify(pagos()),permitir_negativo:'true',descuento_monto:descuentoGeneralMobile(),descuento_automatico_por_pago:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',permitir_descuento_bajo_costo:user.canBelowCost?'true':'false',nota:'VENTA POS REAL',nota_pendiente_folio:notaActiva?.folio||'',sale_intent_id:getOrCreateSaleIntentId()});
   setDebug(data);
   if(data.ok){
@@ -497,7 +497,7 @@ async function guardarNotaPendiente(){
   if(guardandoNotaPendiente) return;
   if(!cliente?.customer_id)return alert('Selecciona cliente');
   if(!cart.length)return alert('Agrega productos');
-  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,precio_base:i.precio_base||i.precio_sistema||i.precio,precio_final:i.precio,tiene_oferta_flash:Boolean(i.tiene_oferta_flash),oferta_flash:i.oferta_flash||null,costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
+  const items_json=JSON.stringify(cart.map(i=>({variant_id:i.variant_id,inventory_item_id:i.inventory_item_id,location_id:i.location_id,cantidad:i.cantidad,precio:i.precio,precio_sistema:i.precio_sistema||i.precio,precio_base:i.precio_base||i.precio_sistema||i.precio,precio_final:i.precio,tiene_oferta_flash:Boolean(i.tiene_oferta_flash),oferta_flash:i.oferta_flash||null,sucursal:user.sucursal||'',costo:i.costo,sku:i.sku,producto:i.producto,imagen:i.imagen})));
   const cliente_json=JSON.stringify(cliente);
   guardandoNotaPendiente = true;
   const data=await api('/pos-guardar-nota-pendiente',{shop:user.shop,folio:notaActiva?.folio||'',items_json,cliente_json,vendedor:user.vendedor,sucursal:user.sucursal,usuario:user.nombre,descuento_monto:descuentoGeneralMobile(),motivo_descuento:val('motivoDescuento')||'Descuento POS',metodo_pago:val('metodo'),nota:'NOTA PENDIENTE POS'});

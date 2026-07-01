@@ -966,8 +966,8 @@ function autoSuggest(tipo){
 
     try{
       const params = tipo === 'sku'
-        ? { shop: currentShop(), sku: value }
-        : { shop: currentShop(), nombre: value };
+        ? { shop: currentShop(), sucursal: document.getElementById('sucursal')?.value || '', sku: value }
+        : { shop: currentShop(), sucursal: document.getElementById('sucursal')?.value || '', nombre: value };
 
       const data = await api('/pos-buscar-producto', params, lastSuggestController.signal);
 
@@ -1175,7 +1175,7 @@ async function buscarProducto(){
   if(frase && !nombre && !sku) nombre=frase;
   if(!sku && !nombre){alert('Escribe SKU, nombre o frase');return}
   setResult('Buscando producto...');
-  const data=await api('/pos-buscar-producto',{shop:currentShop(),sku,nombre});
+  const data=await api('/pos-buscar-producto',{shop:currentShop(),sucursal:document.getElementById('sucursal')?.value||'',sku,nombre});
   setResult(data); renderProductos(data);
 }
 function renderProductos(data){
@@ -1854,6 +1854,7 @@ async function crearOrden(tipoVenta='real'){
     precio_final: item.precio,
     tiene_oferta_flash: Boolean(item.tiene_oferta_flash),
     oferta_flash: item.oferta_flash || null,
+    sucursal: document.getElementById('sucursal')?.value || '',
     costo: item.costo || 0,
     descuento_producto: item.descuento_producto || 0,
     sku: item.sku,
@@ -2330,7 +2331,7 @@ async function buscarIAProductos(){
 
   for(const term of terms){
     try{
-      const data = await api('/pos-buscar-producto', { shop: currentShop(), nombre: term });
+      const data = await api('/pos-buscar-producto', { shop: currentShop(), sucursal: document.getElementById('sucursal')?.value || '', nombre: term });
       if(data.ok && data.productos){
         for(const p of data.productos){
           if(!productosMap.has(p.variant_id)){
@@ -2412,6 +2413,7 @@ async function guardarNotaPendiente(){
     precio_final: item.precio,
     tiene_oferta_flash: Boolean(item.tiene_oferta_flash),
     oferta_flash: item.oferta_flash || null,
+    sucursal: document.getElementById('sucursal')?.value || '',
     costo: item.costo || 0,
     descuento_producto: item.descuento_producto || 0,
     sku: item.sku,
